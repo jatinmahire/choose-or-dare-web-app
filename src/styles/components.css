@@ -1,1 +1,256 @@
-/* TODO */
+/* ============================================================
+   components.css — Reusable Component Styles
+   Choose or Dare | Dark Mobile Party Game
+   ============================================================ */
+
+/* ============================================================
+   BOTTOM NAVIGATION
+   ============================================================ */
+
+.bottom-nav {
+  position:       fixed;
+  bottom:         0;
+  left:           0;
+  right:          0;
+  z-index:        100;
+  height:         64px;
+  /* Add safe-area padding for iPhone notch / home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background:     var(--surface);
+  border-top:     1px solid var(--border);
+  display:        grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items:    center;
+  /* iOS safari blur effect */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nav-item {
+  display:          flex;
+  flex-direction:   column;
+  align-items:      center;
+  justify-content:  center;
+  gap:              4px;
+  height:           100%;
+  min-height:       48px;
+  color:            var(--text-hint);
+  font-size:        11px;
+  font-weight:      500;
+  letter-spacing:   0.2px;
+  cursor:           pointer;
+  touch-action:     manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:       color var(--transition),
+                    transform var(--transition-spring);
+  text-decoration:  none;
+  border:           none;
+  background:       transparent;
+  padding:          0;
+}
+
+.nav-item svg,
+.nav-item .nav-icon {
+  width:      24px;
+  height:     24px;
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+
+.nav-item:active {
+  transform: scale(0.88);
+}
+
+.nav-item.active {
+  color: var(--primary);
+}
+
+.nav-item.active svg,
+.nav-item.active .nav-icon {
+  color: var(--primary);
+}
+
+/* ============================================================
+   TOAST NOTIFICATIONS
+   ============================================================ */
+
+.toast-container {
+  position:         fixed;
+  bottom:           80px;       /* above bottom-nav */
+  left:             50%;
+  transform:        translateX(-50%);
+  z-index:          9000;
+  display:          flex;
+  flex-direction:   column;
+  align-items:      center;
+  gap:              8px;
+  pointer-events:   none;
+  width:            min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  display:          inline-flex;
+  align-items:      center;
+  gap:              10px;
+  padding:          12px 20px;
+  background:       var(--elevated);
+  color:            var(--text);
+  font-size:        14px;
+  font-weight:      500;
+  border-radius:    var(--radius-full);
+  border:           1px solid var(--border-strong);
+  box-shadow:       var(--shadow-card);
+  pointer-events:   auto;
+  max-width:        100%;
+  /* entrance animation */
+  animation:        slide-in-up 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast-success {
+  border-color: rgba(0, 230, 118, 0.35);
+  background:   rgba(0, 230, 118, 0.12);
+  color:        var(--success);
+}
+
+.toast-error {
+  border-color: rgba(255, 82, 82, 0.35);
+  background:   rgba(255, 82, 82, 0.12);
+  color:        var(--error);
+}
+
+.toast-warning {
+  border-color: rgba(255, 215, 64, 0.35);
+  background:   rgba(255, 215, 64, 0.12);
+  color:        var(--warning);
+}
+
+/* ============================================================
+   AVATAR
+   ============================================================ */
+
+.avatar {
+  display:          grid;
+  place-items:      center;
+  border-radius:    50%;
+  flex-shrink:      0;
+  font-weight:      700;
+  color:            #fff;
+  letter-spacing:   0.5px;
+  user-select:      none;
+  /* default size — override with inline style or size modifier */
+  width:            44px;
+  height:           44px;
+  font-size:        17px;
+}
+
+/* Avatar size modifiers */
+.avatar-sm  { width: 32px; height: 32px; font-size: 13px; }
+.avatar-md  { width: 44px; height: 44px; font-size: 17px; }
+.avatar-lg  { width: 56px; height: 56px; font-size: 22px; }
+.avatar-xl  { width: 72px; height: 72px; font-size: 28px; }
+
+/* Avatar color variants (matches --av0 through --av7) */
+.av0 { background: var(--av0); }
+.av1 { background: var(--av1); }
+.av2 { background: var(--av2); }
+.av3 { background: var(--av3); }
+.av4 { background: var(--av4); }
+.av5 { background: var(--av5); }
+.av6 { background: var(--av6); }
+.av7 { background: var(--av7); }
+
+/* ============================================================
+   CATEGORY CHIP SELECTED STATES
+   ============================================================ */
+
+.chip.cat-friendly,
+.chip.chip-active.cat-friendly {
+  background:   rgba(79, 195, 247, 0.15);
+  color:        var(--cat-friendly);
+  border-color: rgba(79, 195, 247, 0.40);
+}
+
+.chip.cat-party,
+.chip.chip-active.cat-party {
+  background:   rgba(255, 183, 77, 0.15);
+  color:        var(--cat-party);
+  border-color: rgba(255, 183, 77, 0.40);
+}
+
+.chip.cat-couples,
+.chip.chip-active.cat-couples {
+  background:   rgba(240, 98, 146, 0.15);
+  color:        var(--cat-couples);
+  border-color: rgba(240, 98, 146, 0.40);
+}
+
+.chip.cat-dirty,
+.chip.chip-active.cat-dirty {
+  background:   rgba(255, 82, 82, 0.15);
+  color:        var(--cat-dirty);
+  border-color: rgba(255, 82, 82, 0.40);
+}
+
+.chip.cat-custom,
+.chip.chip-active.cat-custom {
+  background:   rgba(165, 214, 167, 0.15);
+  color:        var(--cat-custom);
+  border-color: rgba(165, 214, 167, 0.40);
+}
+
+/* ============================================================
+   DIVIDER
+   ============================================================ */
+
+.divider {
+  height:     1px;
+  background: var(--border);
+  width:      100%;
+  border:     none;
+  margin:     0;
+}
+
+/* ============================================================
+   PAGE CONTAINER
+   ============================================================ */
+
+.page {
+  display:        flex;
+  flex-direction: column;
+  min-height:     100dvh;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  overflow-x:     hidden;
+}
+
+/* ============================================================
+   MODAL / BOTTOM SHEET
+   ============================================================ */
+
+.modal-overlay {
+  position:   fixed;
+  inset:      0;
+  z-index:    500;
+  background: rgba(0, 0, 0, 0.65);
+  display:    flex;
+  align-items: flex-end;
+  animation:  fade-in 200ms ease both;
+}
+
+.modal-sheet {
+  width:          100%;
+  background:     var(--surface);
+  border-radius:  var(--radius-xl) var(--radius-xl) 0 0;
+  border-top:     1px solid var(--border-strong);
+  padding:        24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  animation:      slide-in-up 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  max-height:     90dvh;
+  overflow-y:     auto;
+}
+
+.modal-handle {
+  width:         40px;
+  height:        4px;
+  background:    var(--border-strong);
+  border-radius: var(--radius-full);
+  margin:        0 auto 20px;
+}
