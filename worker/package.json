@@ -1,0 +1,7 @@
+{
+  "name": "choose-or-dare-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "itty-router": "^5.0.0"
+  }
+}

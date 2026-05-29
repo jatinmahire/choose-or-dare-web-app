@@ -1,0 +1,11 @@
+{
+  "name": "Choose or Dare",
+  "short_name": "ChooseOrDare",
+  "description": "Choose or Dare — the mobile party game that picks who dares next.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0A0F",
+  "theme_color": "#0A0A0F",
+  "icons": []
+}
