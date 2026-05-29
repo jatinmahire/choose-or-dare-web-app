@@ -9,6 +9,14 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^8.0.12"
+    "rollup-plugin-visualizer": "^7.0.1",
+    "vite": "^8.0.12",
+    "wrangler": "^4.95.0"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.7",
+    "firebase": "^12.14.0",
+    "jsqr": "^1.4.0",
+    "qrcode": "^1.5.4"
   }
 }
