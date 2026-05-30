@@ -121,6 +121,12 @@ export class Router {
       this._render(path);
     });
 
+    // Also listen for direct hash changes (e.g. <a href="#/route"> links)
+    window.addEventListener('hashchange', () => {
+      const path = this._getHashPath();
+      this._render(path);
+    });
+
     // Render the current URL on load
     this._render(this._getHashPath());
   }

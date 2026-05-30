@@ -353,12 +353,18 @@ export default function renderLanding(router) {
 
   app.appendChild(root);
 
-  // ── Play Now handler (guest) ──────────────────────────────────────────────
-  root.querySelector('#landing-play-btn').addEventListener('click', () => {
-    router.navigate('/setup', true);
-  });
+  // ── Play Now handler ────────────────────────────────────────────────────────
+  function handlePlayNow() {
+    // Unsubscribe BEFORE navigating to prevent the auth listener
+    // from firing after we leave and redirecting away from /setup.
+    if (_unsubscribeAuth) { _unsubscribeAuth(); _unsubscribeAuth = null; }
+    // Use direct hash change — more reliable on mobile (hashchange event
+    // is native browser behavior, cannot be blocked by JS issues).
+    window.location.hash = '#/setup';
+  }
+  root.querySelector('#landing-play-btn').addEventListener('click', handlePlayNow);
 
-  // ── Sign-in handler (optional) ────────────────────────────────────────────
+  // ── Sign-in handler (optional) ───────────────────────────────────────────
   const btn = root.querySelector('#landing-google-btn');
 
   async function handleSignIn() {
@@ -379,8 +385,10 @@ export default function renderLanding(router) {
 
   btn.addEventListener('click', handleSignIn);
 
-  // Cleanup
+  // Cleanup: unsubscribe auth listener AND remove button listener
   return () => {
+    if (_unsubscribeAuth) { _unsubscribeAuth(); _unsubscribeAuth = null; }
     btn.removeEventListener('click', handleSignIn);
+    root.querySelector('#landing-play-btn')?.removeEventListener('click', handlePlayNow);
   };
 }
