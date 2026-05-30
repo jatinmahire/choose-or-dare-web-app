@@ -39,18 +39,31 @@ export function sanitizeName(str) {
 }
 
 /**
- * Returns true if the given string is a valid UUID v4.
- * Used to validate room/session IDs before sending to the API.
+ * Returns true if the given string is a valid room/session ID.
+ *
+ * Accepts two formats:
+ *  1. UUID v4 — e.g. '550e8400-e29b-41d4-a716-446655440000'
+ *     (future-proof if we ever switch to client-generated UUIDs)
+ *  2. Firestore auto-ID — 20 alphanumeric characters, e.g. 'ABC1def2GHI3jkl4MNO5'
+ *     (Firestore addDoc() generates these by default)
+ *
+ * Both formats: only [a-zA-Z0-9-] — no slashes, dots, or special chars.
+ * This prevents path traversal attacks like '/../../etc'.
  *
  * @param {string} id
  * @returns {boolean}
  */
 export function isValidRoomId(id) {
   if (typeof id !== 'string') return false;
+  // UUID v4
   const UUID_V4 =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return UUID_V4.test(id);
+  if (UUID_V4.test(id)) return true;
+  // Firestore auto-ID: exactly 20 alphanumeric chars
+  const FIRESTORE_ID = /^[A-Za-z0-9]{20}$/;
+  return FIRESTORE_ID.test(id);
 }
+
 
 /**
  * Returns true if the given string is a valid Firebase UID or similar user ID.

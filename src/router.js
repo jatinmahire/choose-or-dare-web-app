@@ -226,6 +226,7 @@ export class Router {
    */
   _renderError(err) {
     if (!this._container) return;
+    // Static shell uses innerHTML; message injected via textContent (XSS-safe)
     this._container.innerHTML = `
       <div style="
         display:flex;flex-direction:column;align-items:center;
@@ -234,9 +235,7 @@ export class Router {
       ">
         <div style="font-size:52px;margin-bottom:12px;">⚠️</div>
         <h1 style="font-size:20px;font-weight:700;margin:0 0 8px;">Something went wrong</h1>
-        <p style="color:rgba(238,238,244,0.55);font-size:13px;margin:0 0 24px;max-width:280px;word-break:break-word;">
-          ${err?.message || 'An unexpected error occurred.'}
-        </p>
+        <p id="router-err-msg" style="color:rgba(238,238,244,0.55);font-size:13px;margin:0 0 24px;max-width:280px;word-break:break-word;"></p>
         <button
           id="router-error-home"
           onclick="location.hash='#/'"
@@ -247,7 +246,11 @@ export class Router {
         >Go Home</button>
       </div>
     `;
+    // Safe: textContent never executes HTML/scripts
+    const msgEl = this._container.querySelector('#router-err-msg');
+    if (msgEl) msgEl.textContent = err?.message || 'An unexpected error occurred.';
   }
+
 }
 
 /** Singleton router instance — import and use throughout the app. */
