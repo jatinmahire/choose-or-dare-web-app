@@ -57,11 +57,17 @@ body {
   text-rendering:           optimizeLegibility;
   /* Prevent scroll-bounce on iOS */
   overscroll-behavior:      none;
-  /* Fill safe areas */
-  min-height:               100dvh;
+  /* Fill safe areas — fallback chain for iOS compatibility:
+     1. 100dvh — iOS 15.4+, Android Chrome 108+
+     2. -webkit-fill-available — iOS 11–15.3 (excludes browser chrome)
+     3. 100vh — legacy absolute fallback */
+  min-height:               100vh;                    /* legacy fallback */
+  min-height:               -webkit-fill-available;   /* iOS 11–15.3    */
+  min-height:               100dvh;                   /* modern          */
   /* Prevent horizontal overflow */
   overflow-x:               hidden;
 }
+
 
 /* ── Global Scrollbar Hidden ─────────────────────────────── */
 * {
@@ -109,11 +115,26 @@ button {
 }
 
 /* ── Focus Visible (keyboard-only) ──────────────────────── */
-:focus-visible {
-  outline:        2px solid var(--primary);
-  outline-offset: 3px;
-  border-radius:  4px;
+/* Guard with @supports: iOS < 16 doesn't support :focus-visible correctly.
+   Without the guard, tapping elements could show an unexpected outline ring. */
+@supports selector(:focus-visible) {
+  :focus-visible {
+    outline:        2px solid var(--primary);
+    outline-offset: 3px;
+    border-radius:  4px;
+  }
 }
+
+/* Suppress the legacy WebKit focus ring on older iOS / Safari < 15 */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Belt-and-suspenders: disable WebKit's tap highlight + focus ring globally */
+* {
+  -webkit-focus-ring-color: transparent;
+}
+
 
 /* ── Selection Color ─────────────────────────────────────── */
 ::selection {

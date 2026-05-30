@@ -9,7 +9,7 @@ import './styles/components.css';
 import { store }              from './store.js';
 import { router }             from './router.js';
 import { isMobile, initLandscapeBlock } from './utils/device.js';
-import { initOfflineBanner }  from './utils/feedback.js';
+import { initOfflineBanner, initAudioUnlock } from './utils/feedback.js';
 import { onAuthChange, resumeRedirectSignIn } from './auth.js';
 
 // ── Desktop redirect ────────────────────────────────────────────────────────
@@ -40,6 +40,9 @@ if (!isMobile()) {
 
   // 2. Offline banner (shows when navigator.onLine === false)
   initOfflineBanner();
+
+  // 2a. iOS AudioContext unlock — must run once before any sound
+  initAudioUnlock();
 
   // 3. Register all page routes (lazy-loaded chunks)
   router

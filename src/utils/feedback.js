@@ -19,6 +19,30 @@ function getAudioCtx() {
   return _audioCtx;
 }
 
+/**
+ * iOS Safari: AudioContext starts in 'suspended' state and NEVER auto-resumes.
+ * Must be called from main.js once — attaches a one-shot touchstart listener
+ * that unlocks the context on first user touch.
+ * Safe to call on non-iOS; does nothing if already running.
+ */
+export function initAudioUnlock() {
+  function unlock() {
+    if (_audioCtx?.state === 'suspended') {
+      _audioCtx.resume().catch(() => {});
+    } else if (!_audioCtx) {
+      // Pre-create and immediately suspend so first beep() has 0 latency
+      try {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // On iOS the act of creating inside a touch event is enough to unlock
+      } catch (_) { /* non-critical */ }
+    }
+  }
+  document.addEventListener('touchstart', unlock, { once: true, passive: true });
+  // Also cover click (desktop fallback / PWA installs)
+  document.addEventListener('click',      unlock, { once: true, passive: true });
+}
+
+
 // ─── Core Beep Primitive ───────────────────────────────────────────────────
 /**
  * Plays a single synthesized tone.
