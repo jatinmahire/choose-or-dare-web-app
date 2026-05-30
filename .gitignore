@@ -8,3 +8,7 @@ worker/.dev.vars
 .DS_Store
 worker/node_modules/
 worker/.wrangler/
+
+*.mp4
+*.mov
+*.avi
