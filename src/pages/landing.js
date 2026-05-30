@@ -161,55 +161,52 @@ const CSS = `
   margin-top: 40px;
   animation: land-fade-up .55s .3s ease both;
 }
-/* Google button — dark premium, with shimmer + glow */
-.google-btn {
-  width: 100%; height: 58px;
+/* Play Now primary CTA */
+.play-now-btn {
+  width: 100%; height: 60px;
   background: linear-gradient(135deg, #7C4DFF 0%, #9C27B0 100%);
   border: none;
   border-radius: 9999px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-size: 22px; font-weight: 900; letter-spacing: .02em;
+  color: #fff;
   cursor: pointer;
-  transition: transform .15s ease;
+  transition: transform .15s ease, box-shadow .15s;
   touch-action: manipulation;
   position: relative;
   overflow: hidden;
   animation: btn-glow-pulse 3s ease-in-out infinite;
+  box-shadow: 0 8px 40px rgba(124,77,255,.5);
 }
-.google-btn::after {
+.play-now-btn::after {
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.22) 50%, transparent 100%);
   transform: translateX(-100%) skewX(-15deg);
   animation: shimmer-sweep 3s ease-in-out infinite 1.5s;
 }
-.google-btn:active { transform: scale(.97); }
-.google-btn:disabled { opacity:.65; cursor:not-allowed; animation: none; }
-.google-btn:disabled::after { display: none; }
-.google-btn-icon-wrap {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: #fff;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+.play-now-btn:active { transform: scale(.97); box-shadow: 0 4px 20px rgba(124,77,255,.4); }
+/* Optional sign-in link (subtle, below Play Now) */
+.land-signin-link {
+  background: none; border: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  color: #494455; cursor: pointer;
+  padding: 6px 12px; border-radius: 8px;
+  transition: color .15s;
+  align-self: center;
 }
-.google-btn-text {
-  font-family: 'Hanken Grotesk', system-ui, sans-serif;
-  font-size: 16px; font-weight: 700; color: #fff;
-}
-.google-btn-spinner {
-  width: 22px; height: 22px; border-radius: 50%;
-  border: 2.5px solid rgba(255,255,255,.25);
-  border-top-color: #fff;
-  animation: spin .7s linear infinite;
-  display: none;
-}
-.google-btn.loading .google-btn-spinner { display: block; }
-.google-btn.loading .google-btn-icon-wrap,
-.google-btn.loading .google-btn-text    { display: none; }
+.land-signin-link:hover { color: #948ea1; }
+.land-signin-link:active { color: #cdbdff; }
 .signin-hint {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px; font-weight: 700; letter-spacing: .1em;
   color: #494455; text-align: center;
 }
+/* Keep google-btn styles for backwards compat (cached old pages) */
+.google-btn { display: none; }
+
 /* Feature chips row */
 .land-chips {
   display: flex; gap: 8px; justify-content: flex-start;
@@ -278,11 +275,8 @@ export default function renderLanding(router) {
     return;
   }
 
-  // Safety net: subscribe to auth changes inside the landing page.
-  // If the user signs in (Google redirect completes) while this page is
-  // still mounted, navigate to /home immediately.
-  // This is independent of main.js logic, so it works even if an old
-  // cached main.js bundle doesn't have the navigation fix.
+  // If Google redirect sign-in completes while on landing, go to home.
+  // (Guest users stay on landing until they tap Play Now.)
   let _unsubscribeAuth = onAuthChange((user) => {
     if (user) {
       if (_unsubscribeAuth) { _unsubscribeAuth(); _unsubscribeAuth = null; }
@@ -317,21 +311,21 @@ export default function renderLanding(router) {
         <p class="land-subtitle">The finger-picker party game that decides who goes.</p>
       </div>
 
-      <!-- Sign-in -->
-      <section class="land-signin" aria-label="Sign in">
-        <button class="google-btn" id="landing-google-btn" aria-label="Continue with Google">
-          <div class="google-btn-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.81c.87-2.6 3.3-4.5 6.16-4.5z" fill="#EA4335"/>
-            </svg>
-          </div>
-          <div class="google-btn-spinner"></div>
-          <span class="google-btn-text">Continue with Google</span>
+      <!-- CTA -->
+      <section class="land-signin" aria-label="Start playing">
+        <button class="play-now-btn" id="landing-play-btn" aria-label="Play Now">
+          Play Now →
         </button>
-        <p class="signin-hint">FREE &middot; NO EMAIL NEEDED &middot; MOBILE ONLY</p>
+        <p class="signin-hint">NO ACCOUNT NEEDED &middot; FREE &middot; MOBILE ONLY</p>
+        <button class="land-signin-link" id="landing-google-btn" aria-label="Sign in with Google to save progress">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.81c.87-2.6 3.3-4.5 6.16-4.5z" fill="#EA4335"/>
+          </svg>
+          Sign in to save progress
+        </button>
       </section>
 
       <!-- Feature chips -->
@@ -359,14 +353,18 @@ export default function renderLanding(router) {
 
   app.appendChild(root);
 
-  // ── Sign-in handler ───────────────────────────────────────────────────────
+  // ── Play Now handler (guest) ──────────────────────────────────────────────
+  root.querySelector('#landing-play-btn').addEventListener('click', () => {
+    router.navigate('/setup', true);
+  });
+
+  // ── Sign-in handler (optional) ────────────────────────────────────────────
   const btn = root.querySelector('#landing-google-btn');
 
   async function handleSignIn() {
     btn.disabled = true;
-    btn.classList.add('loading');
-    const textEl = btn.querySelector('.google-btn-text');
-    if (textEl) textEl.textContent = 'Redirecting…';
+    btn.style.opacity = '0.5';
+    btn.textContent = 'Redirecting…';
 
     try {
       await signInWithGoogle(); // triggers full-page redirect — never resolves
@@ -374,8 +372,8 @@ export default function renderLanding(router) {
       console.error('[landing] redirect error:', err);
       showToast('Sign-in failed. Check your connection and try again.', 'error');
       btn.disabled = false;
-      btn.classList.remove('loading');
-      if (textEl) textEl.textContent = 'Continue with Google';
+      btn.style.opacity = '';
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.81c.87-2.6 3.3-4.5 6.16-4.5z" fill="#EA4335"/></svg> Sign in to save progress`;
     }
   }
 

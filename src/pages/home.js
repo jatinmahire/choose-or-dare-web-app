@@ -4,6 +4,7 @@
 import { store }         from '../store.js';
 import { api }           from '../utils/api.js';
 import { showToast, haptic } from '../utils/feedback.js';
+import { signInWithGoogle }  from '../auth.js';
 
 // ── Avatar colors (8 palette options for player avatars) ─────────────────────
 export const AV_COLORS = [
@@ -251,16 +252,12 @@ export default function renderHome(router) {
   const app = document.getElementById('app');
   if (!app) return;
 
-  // Redirect if not signed in
-  if (!store.user) { router.navigate('/landing', true); return; }
-
-  app.innerHTML = '';
-
-  const user = store.user;
-  const firstName = (user.displayName || 'Player').split(' ')[0];
+  const user = store.user; // null = guest
+  const isGuest = !user;
+  const firstName = isGuest ? 'Guest' : (user.displayName || 'Player').split(' ')[0];
 
   // Avatar
-  const avatarHTML = user.photoURL
+  const avatarHTML = (!isGuest && user.photoURL)
     ? `<img class="home-avatar" src="${user.photoURL}" alt="${firstName}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     + `<div class="home-avatar-fallback" style="display:none">${firstName[0].toUpperCase()}</div>`
     : `<div class="home-avatar-fallback">${firstName[0].toUpperCase()}</div>`;
@@ -292,18 +289,24 @@ export default function renderHome(router) {
 
     <!-- Stats row -->
     <section class="stats-row" id="stats-row" aria-label="Your stats">
-      <div class="stat-card">
-        <div class="stat-num" id="stat-sessions"><div class="skeleton" style="width:40px;height:28px;margin:0 auto"></div></div>
-        <div class="stat-label">Sessions</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="stat-dares"><div class="skeleton" style="width:40px;height:28px;margin:0 auto"></div></div>
-        <div class="stat-label">Dares Done</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="stat-bravery"><div class="skeleton" style="width:48px;height:28px;margin:0 auto"></div></div>
-        <div class="stat-label">Bravery %</div>
-      </div>
+      ${isGuest ? `
+        <div class="stat-card" style="grid-column:1/-1;padding:20px 16px;text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">🔒</div>
+          <p style="font-size:13px;color:#948ea1;margin:0 0 14px;line-height:1.4">Sign in to track your stats and history across sessions.</p>
+          <button id="home-signin-btn" style="height:40px;padding:0 20px;border-radius:10px;border:1.5px solid rgba(124,77,255,.5);background:rgba(124,77,255,.12);color:#cdbdff;font-family:'Hanken Grotesk',system-ui;font-size:14px;font-weight:700;cursor:pointer">Sign in with Google</button>
+        </div>` : `
+        <div class="stat-card">
+          <div class="stat-num" id="stat-sessions"><div class="skeleton" style="width:40px;height:28px;margin:0 auto"></div></div>
+          <div class="stat-label">Sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-dares"><div class="skeleton" style="width:40px;height:28px;margin:0 auto"></div></div>
+          <div class="stat-label">Dares Done</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-bravery"><div class="skeleton" style="width:48px;height:28px;margin:0 auto"></div></div>
+          <div class="stat-label">Bravery %</div>
+        </div>`}
     </section>
 
     <!-- Recent games -->
@@ -313,15 +316,20 @@ export default function renderHome(router) {
         <button class="see-all-btn" id="see-all-btn">SEE ALL</button>
       </div>
       <div id="recent-games-container">
-        <!-- skeleton rows -->
-        <div class="games-card">
-          ${[1,2,3].map(() => `
-            <div class="session-row">
-              <div class="skeleton" style="width:52px;height:16px"></div>
-              <div class="skeleton" style="flex:1;height:14px"></div>
-              <div class="skeleton" style="width:16px;height:16px"></div>
-            </div>`).join('')}
-        </div>
+        ${isGuest ? `
+          <div class="empty-state">
+            <div class="empty-emoji">🎲</div>
+            <p class="empty-text">Play a game to see your history here.<br><span style="font-size:12px;color:#494455">Sign in to save across sessions.</span></p>
+          </div>` : `
+          <!-- skeleton rows -->
+          <div class="games-card">
+            ${[1,2,3].map(() => `
+              <div class="session-row">
+                <div class="skeleton" style="width:52px;height:16px"></div>
+                <div class="skeleton" style="flex:1;height:14px"></div>
+                <div class="skeleton" style="width:16px;height:16px"></div>
+              </div>`).join('')}
+          </div>`}
       </div>
     </section>
   `;
@@ -341,10 +349,16 @@ export default function renderHome(router) {
     router.navigate('/history');
   });
 
-  // ── Load data ────────────────────────────────────────────────────────────
+  // Guest sign-in button
+  root.querySelector('#home-signin-btn')?.addEventListener('click', () => {
+    signInWithGoogle().catch(err => showToast('Sign-in failed', 'error'));
+  });
+
+  // ── Load data (skip for guests) ──────────────────────────────────────────
   let aborted = false;
 
   async function loadData() {
+    if (isGuest) return; // guests have no saved data
     try {
       const [statsRes, historyRes] = await Promise.allSettled([
         api.getStats(),

@@ -448,6 +448,19 @@ export default function renderResult(router, params) {
   const actionBtns = [root.querySelector('#rs-play-again'), root.querySelector('#rs-new-game')];
 
   async function saveSessionData() {
+    // Guests: no account — skip save, show sign-in prompt instead
+    if (!store.user) {
+      overlay.classList.add('hidden');
+      actionBtns.forEach(b => b && (b.disabled = false));
+      errText.textContent = 'Sign in with Google to save this session to your history.';
+      errBanner.classList.add('visible');
+      retryBtn.textContent = 'Sign in to Save';
+      retryBtn.onclick = () => {
+        import('../auth.js').then(m => m.signInWithGoogle()).catch(() => {});
+      };
+      return;
+    }
+
     overlay.classList.remove('hidden');
     errBanner.classList.remove('visible');
     actionBtns.forEach(b => b && (b.disabled = true));
