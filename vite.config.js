@@ -87,6 +87,10 @@ export default defineConfig(({ mode }) => {
     define: {
       // Make VITE_WORKER_URL available as import.meta.env.VITE_WORKER_URL
       '__VITE_WORKER_URL__': JSON.stringify(env.VITE_WORKER_URL ?? ''),
+      // App version from package.json
+      '__APP_VERSION__': JSON.stringify(
+        JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version ?? '1.0.0'
+      ),
     },
   };
 });
