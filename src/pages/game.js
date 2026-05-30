@@ -33,20 +33,39 @@ const CSS = `
   top: 50%; left: 50%;
   transform: translate(-50%,-50%) scale(1);
   font-family: 'Bricolage Grotesque', system-ui, sans-serif;
-  font-size: 140px; font-weight: 900;
-  color: #7C4DFF;
-  text-shadow: 0 0 40px rgba(124,77,255,.9), 0 0 80px rgba(124,77,255,.5);
+  font-size: clamp(140px, 40vw, 200px); font-weight: 900;
   pointer-events: none; z-index: 10;
   opacity: 0;
-  transition: opacity .2s;
+  filter: blur(20px);
+  transition: opacity .15s;
+  will-change: transform, filter;
 }
 .gp-countdown.visible { opacity: 1; }
-.gp-countdown.bounce {
-  animation: gp-bounce .35s cubic-bezier(.34,1.56,.64,1);
+.gp-countdown.dramatic {
+  animation: gp-dramatic .45s cubic-bezier(.22,1,.36,1) forwards;
 }
-@keyframes gp-bounce {
-  0%   { transform: translate(-50%,-50%) scale(1.6); }
-  100% { transform: translate(-50%,-50%) scale(1); }
+@keyframes gp-dramatic {
+  0%   { transform: translate(-50%,-50%) scale(2.2); filter: blur(20px); }
+  60%  { filter: blur(2px); }
+  100% { transform: translate(-50%,-50%) scale(1); filter: blur(0px); }
+}
+/* Ripple ring — expands outward on each countdown number */
+.gp-ripple {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 200px; height: 200px;
+  margin-top: -100px; margin-left: -100px;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+  pointer-events: none; z-index: 9;
+  opacity: 0;
+}
+.gp-ripple.fire {
+  animation: gp-ripple-out .7s cubic-bezier(.2,.8,.4,1) forwards;
+}
+@keyframes gp-ripple-out {
+  0%   { transform: scale(.3); opacity: .8; }
+  100% { transform: scale(3);  opacity: 0; }
 }
 /* Hint text */
 .gp-hint {
@@ -97,18 +116,35 @@ const CSS = `
 .gp-action-btn:active { transform: scale(.95); }
 .gp-truth { border: 2.5px solid #42A5F5; color: #42A5F5; box-shadow: 0 0 20px rgba(66,165,245,.3); }
 .gp-dare  { border: 2.5px solid #FF6061; color: #FF6061; box-shadow: 0 0 20px rgba(255,96,97,.3); }
-/* Winner name overlay */
+/* Winner name overlay — stamp entrance */
 .gp-winner-name {
   position: absolute; top: 30%; left: 0; right: 0;
   text-align: center;
   font-family: 'Bricolage Grotesque', system-ui, sans-serif;
-  font-size: 36px; font-weight: 900; color: #fff;
-  text-shadow: 0 2px 20px rgba(0,0,0,.8);
+  font-size: clamp(32px, 9vw, 42px); font-weight: 900; color: #fff;
   pointer-events: none; z-index: 15;
   opacity: 0;
-  transition: opacity .5s .3s;
+  will-change: transform, opacity;
 }
-.gp-winner-name.visible { opacity: 1; }
+.gp-winner-name.visible {
+  opacity: 1;
+  animation: gp-stamp .55s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes gp-stamp {
+  0%   { transform: scale(2.4) rotate(-4deg); opacity: 0; filter: blur(4px); }
+  60%  { transform: scale(.92) rotate(1.5deg); opacity: 1; filter: blur(0); }
+  78%  { transform: scale(1.06) rotate(-.5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+/* Winner background flood */
+.gp-winner-flood {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 8;
+  opacity: 0;
+  border-radius: 0;
+  transition: opacity .4s;
+}
+.gp-winner-flood.visible { opacity: 1; }
 /* Back button */
 .gp-back {
   position: absolute; top: calc(env(safe-area-inset-top, 0px) + 52px); left: 16px;
@@ -231,11 +267,21 @@ export default function renderGame(router, params) {
   countdownEl.textContent = '3';
   root.appendChild(countdownEl);
 
+  // Ripple ring for countdown
+  const rippleEl = document.createElement('div');
+  rippleEl.className = 'gp-ripple';
+  root.appendChild(rippleEl);
+
   // Hint text
   const hintEl = document.createElement('div');
   hintEl.className = 'gp-hint';
   hintEl.textContent = "Don't lift your finger!";
   root.appendChild(hintEl);
+
+  // Winner background flood
+  const floodEl = document.createElement('div');
+  floodEl.className = 'gp-winner-flood';
+  root.appendChild(floodEl);
 
   // Winner name
   const winnerNameEl = document.createElement('div');
@@ -359,6 +405,31 @@ export default function renderGame(router, params) {
     animFrame = requestAnimationFrame(draw);
   }
 
+  // Per-number colors: 3=amber, 2=orange, 1=red — each feels more urgent
+  const COUNT_COLORS = { 3: '#FFB300', 2: '#FF6D00', 1: '#FF1744' };
+  const COUNT_GLOWS  = {
+    3: '0 0 60px rgba(255,179,0,.9),  0 0 120px rgba(255,179,0,.4)',
+    2: '0 0 60px rgba(255,109,0,.9),  0 0 120px rgba(255,109,0,.4)',
+    1: '0 0 60px rgba(255,23,68,1),   0 0 140px rgba(255,23,68,.6)',
+  };
+
+  function triggerDramatic(n) {
+    const col = COUNT_COLORS[n] ?? '#7C4DFF';
+    countdownEl.style.color      = col;
+    countdownEl.style.textShadow = COUNT_GLOWS[n] ?? '';
+
+    // Ripple ring burst
+    rippleEl.style.color = col;
+    rippleEl.classList.remove('fire');
+    void rippleEl.offsetWidth; // reflow
+    rippleEl.classList.add('fire');
+
+    // Dramatic blur-clear entrance
+    countdownEl.classList.remove('dramatic');
+    void countdownEl.offsetWidth; // reflow
+    countdownEl.classList.add('dramatic');
+  }
+
   // ── Countdown ────────────────────────────────────────────────────────────
   function startCountdown() {
     if (gameState !== 'waiting') return;
@@ -368,7 +439,7 @@ export default function renderGame(router, params) {
     countdownEl.textContent = '3';
     countdownEl.classList.add('visible');
     hintEl.classList.add('hidden');
-    triggerBounce();
+    triggerDramatic(3);
 
     countdownTimer = setInterval(() => {
       countdownVal--;
@@ -378,7 +449,7 @@ export default function renderGame(router, params) {
         selectWinner();
       } else {
         countdownEl.textContent = String(countdownVal);
-        triggerBounce();
+        triggerDramatic(countdownVal);
       }
     }, 1000);
   }
@@ -387,15 +458,10 @@ export default function renderGame(router, params) {
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     if (gameState === 'countdown') {
       gameState = 'waiting';
-      countdownEl.classList.remove('visible');
+      countdownEl.classList.remove('visible', 'dramatic');
+      rippleEl.classList.remove('fire');
       hintEl.classList.remove('hidden');
     }
-  }
-
-  function triggerBounce() {
-    countdownEl.classList.remove('bounce');
-    void countdownEl.offsetWidth; // reflow
-    countdownEl.classList.add('bounce');
   }
 
   // ── Winner selection ──────────────────────────────────────────────────────
@@ -410,7 +476,14 @@ export default function renderGame(router, params) {
     gameState  = 'winner';
 
     // Hide countdown overlay
-    countdownEl.classList.remove('visible');
+    countdownEl.classList.remove('visible', 'dramatic');
+    rippleEl.classList.remove('fire');
+
+    // Winner flood — tinted radial glow from winner circle position
+    const px = (t.x / canvas.width  * 100).toFixed(1);
+    const py = (t.y / canvas.height * 100).toFixed(1);
+    floodEl.style.background = `radial-gradient(ellipse 60% 50% at ${px}% ${py}%, ${hexRgba(t.color, .18)} 0%, transparent 70%)`;
+    floodEl.classList.add('visible');
 
     // Haptic + sound
     haptic.winner();
@@ -422,16 +495,18 @@ export default function renderGame(router, params) {
     // Store winner for card page
     store.currentPlayerName = t.name;
 
-    // Show winner name after short delay
+    // Stamp reveal: winner name slams in
     setTimeout(() => {
-      winnerNameEl.textContent = `👑 ${t.name}`;
+      winnerNameEl.style.color      = t.color;
+      winnerNameEl.style.textShadow = `0 0 40px ${hexRgba(t.color,.7)}, 0 0 80px ${hexRgba(t.color,.4)}`;
+      winnerNameEl.textContent = `${t.name}`;
       winnerNameEl.classList.add('visible');
-    }, 400);
+    }, 350);
 
     // Show TRUTH / DARE buttons
     setTimeout(() => {
       actionsEl.classList.add('visible');
-    }, 1500);
+    }, 1600);
   }
 
   // ── Touch handlers ────────────────────────────────────────────────────────

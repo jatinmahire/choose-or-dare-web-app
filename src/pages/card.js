@@ -95,6 +95,43 @@ const CSS = `
 .cr-diff-dots    { display: flex; gap: 6px; }
 .cr-diff-dot     { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.2); }
 .cr-diff-dot.on  { background: currentColor; }
+/* ── Card front anticipation shimmer ── */
+@keyframes cr-front-shimmer {
+  0%   { transform: translateX(-100%) skewX(-15deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(200%) skewX(-15deg); opacity: 0; }
+}
+.cr-front-shimmer {
+  position: absolute; inset: 0; border-radius: 22px;
+  overflow: hidden; pointer-events: none; z-index: 1;
+}
+.cr-front-shimmer::after {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.15) 50%, transparent 100%);
+  animation: cr-front-shimmer 2.5s ease-in-out infinite 1.5s;
+}
+/* Pulsing tap hint */
+@keyframes cr-hint-pulse {
+  0%,100% { opacity: .45; transform: scale(1); }
+  50%     { opacity: .8;  transform: scale(1.04); }
+}
+.cr-front-hint {
+  font-style: italic; font-size: 15px; color: rgba(255,255,255,.5);
+  animation: cr-hint-pulse 2s ease-in-out infinite;
+}
+/* ── Word cascade on card back ── */
+@keyframes cr-word-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cr-word {
+  display: inline-block;
+  opacity: 0;
+  animation: cr-word-in .3s ease forwards;
+}
 /* Skeleton card */
 .cr-skeleton-card {
   width: 100%; max-width: 320px; aspect-ratio: 0.65;
@@ -128,6 +165,18 @@ const CSS = `
   opacity: 0; pointer-events: none; transition: opacity .4s .2s;
 }
 .cr-timer-wrap.visible { opacity: 1; pointer-events: all; }
+/* Urgent timer pulsing ring */
+@keyframes cr-timer-throb {
+  0%,100% { transform: scale(1);    filter: drop-shadow(0 0 0px #F44336); }
+  50%     { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(244,67,54,.8)); }
+}
+.cr-timer-wrap.urgent { animation: cr-timer-throb 1s ease-in-out infinite; }
+/* Root screen-edge vignette in last 10s */
+@keyframes cr-vignette-pulse {
+  0%,100% { box-shadow: inset 0 0 0 0 transparent; }
+  50%     { box-shadow: inset 0 0 80px 20px rgba(244,67,54,.3); }
+}
+.cr-root.urgent { animation: cr-vignette-pulse 1s ease-in-out infinite; }
 .cr-timer-svg { display: block; overflow: visible; }
 .cr-timer-text {
   font-family: 'Bricolage Grotesque',system-ui,sans-serif;
@@ -417,7 +466,8 @@ export default async function renderCard(router, params) {
           <!-- FRONT -->
           <div class="card-face card-front">
             <div class="cr-front-inner"
-                 style="background:${meta.gradient};border-color:${meta.border}">
+                 style="background:${meta.gradient};border-color:${meta.border};position:relative;overflow:hidden">
+              <div class="cr-front-shimmer"></div>
               <div id="cr-cat-label-slot"></div>
               <div class="cr-front-emoji">${meta.emoji}</div>
               <div class="cr-front-hint">Tap to reveal</div>
@@ -445,8 +495,12 @@ export default async function renderCard(router, params) {
     // Inject category label and card text safely via textContent
     const catSlot = wrap.querySelector('#cr-cat-label-slot');
     if (catSlot) catSlot.appendChild(catLabelEl);
+
+    // Card text: word-cascade reveal — injected after flip, not here
+    // (see flip handler below — cardTextEl populated on flip)
     const cardTextEl = wrap.querySelector('#cr-card-text-el');
-    if (cardTextEl) cardTextEl.textContent = card.text ?? '';
+    // Store raw text for cascade reveal
+    wrap._cardText = card.text ?? '';
 
     area.appendChild(wrap);
 
@@ -457,6 +511,24 @@ export default async function renderCard(router, params) {
       wrap.querySelector('#cr-card-inner').classList.add('flipped');
       sound.flip();
       haptic.medium();
+
+      // Word-cascade reveal on card back after 3D flip completes
+      setTimeout(() => {
+        const cardTextEl = wrap.querySelector('#cr-card-text-el');
+        if (cardTextEl && wrap._cardText) {
+          const words = wrap._cardText.split(' ');
+          cardTextEl.innerHTML = '';
+          words.forEach((word, i) => {
+            const span = document.createElement('span');
+            span.className = 'cr-word';
+            span.style.animationDelay = `${i * 60}ms`;
+            span.textContent = word;
+            cardTextEl.appendChild(span);
+            // Add non-animated space between words
+            if (i < words.length - 1) cardTextEl.appendChild(document.createTextNode(' '));
+          });
+        }
+      }, 480);
 
       // After flip: show timer (DARE) or vote panel (TRUTH)
       setTimeout(() => {
@@ -511,20 +583,30 @@ export default async function renderCard(router, params) {
       const text = timerWrap.querySelector('#cr-timer-text');
       const elapsed = timerSeconds - timerVal;
       const elPct   = elapsed / timerSeconds;
+      const urgentColor = elPct >= 0.8 ? '#F44336' : elPct >= 0.4 ? '#FFC107' : '#4CAF84';
 
       if (arc) {
         arc.style.strokeDashoffset = String(TIMER_CIRCUM * elPct);
-        arc.style.stroke = elPct < 0.4 ? '#4CAF84' : elPct < 0.8 ? '#FFC107' : '#F44336';
+        arc.style.stroke = urgentColor;
       }
-      if (text) text.textContent = String(Math.max(0, timerVal));
+      if (text) {
+        text.textContent = String(Math.max(0, timerVal));
+        text.style.fill = elPct >= 0.8 ? '#FF5252' : '#e6e0ee';
+      }
 
-      // Haptic milestones
-      if (timerVal === 10) haptic.medium();
-      if (timerVal === 3)  haptic.heavy();
+      // Urgency states at 10s remaining
+      if (timerVal === 10) {
+        haptic.medium();
+        timerWrap.classList.add('urgent');
+        root.classList.add('urgent');
+      }
+      if (timerVal === 3) haptic.heavy();
 
       if (timerVal <= 0) {
         clearInterval(timerInt); timerInt = null;
         haptic.error(); sound.ding();
+        timerWrap.classList.remove('urgent');
+        root.classList.remove('urgent');
         showDareVoting();
       }
     }, 1000);
