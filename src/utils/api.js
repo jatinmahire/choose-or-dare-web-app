@@ -88,9 +88,10 @@ export const api = {
 
   // ── Leaderboard ───────────────────────────────────────────────────────────
 
-  /** Public leaderboard — no auth required, cached 5 min on CF edge. */
-  getLeaderboard() {
-    return publicFetch('/api/leaderboard');
+  /** Public leaderboard — no auth required, cached 5 min on CF edge.
+   * @param {'all'|'month'} period */
+  getLeaderboard(period = 'all') {
+    return publicFetch(`/api/leaderboard?period=${period}`);
   },
 
   // ── Custom Cards ──────────────────────────────────────────────────────────
