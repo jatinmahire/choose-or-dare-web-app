@@ -46,7 +46,16 @@ if (!isMobile()) {
 
   // 3. Register all page routes (lazy-loaded chunks)
   router
-    .register('/',            () => import('./pages/landing.js').then(m => m.default(router)),   false)
+    .register('/', () => {
+      // Auto-route: signed-in users → home dashboard, guests → setup directly
+      // No button click required — eliminates all Play Now navigation issues.
+      if (store.user) {
+        router.navigate('/home', true);
+      } else {
+        router.navigate('/setup', true);
+      }
+      return () => {}; // no cleanup needed
+    }, false)
     .register('/landing',     () => import('./pages/landing.js').then(m => m.default(router)),   false)
     .register('/home',        (p) => import('./pages/home.js').then(m => m.default(router)),      false)
     .register('/setup',       (p) => import('./pages/setup.js').then(m => m.default(router)),     false)
