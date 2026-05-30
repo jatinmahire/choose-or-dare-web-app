@@ -2,8 +2,6 @@
 // api: saveCustomCard, getCustomCards, deleteCustomCard
 // packages: qrcode (QR generation), jsqr (camera scan decode)
 
-import QRCode           from 'qrcode';
-import jsQR             from 'jsqr';
 import { store }        from '../store.js';
 import { api }          from '../utils/api.js';
 import { sanitizeCard, escapeHtml } from '../utils/security.js';
@@ -720,6 +718,7 @@ export default function renderCards(router, params) {
     qrSheet.classList.add('visible');
 
     try {
+      const { default: QRCode } = await import('qrcode');
       await QRCode.toCanvas(qrCanvas, json, {
         width: 260,
         margin: 2,
@@ -769,6 +768,7 @@ export default function renderCards(router, params) {
       scanVideo.srcObject = scanStream;
       scanVideo.play();
 
+      const { default: jsQR } = await import('jsqr');
       const offCanvas = document.createElement('canvas');
       const offCtx    = offCanvas.getContext('2d');
 

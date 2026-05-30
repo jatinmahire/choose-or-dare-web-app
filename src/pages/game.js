@@ -222,9 +222,12 @@ export default function renderGame(router, params) {
   root.appendChild(canvas);
   const ctx = canvas.getContext('2d');
 
-  // Countdown overlay
+  // Countdown overlay — aria-live so screen readers announce each number
   const countdownEl = document.createElement('div');
   countdownEl.className = 'gp-countdown';
+  countdownEl.setAttribute('aria-live', 'assertive');
+  countdownEl.setAttribute('aria-atomic', 'true');
+  countdownEl.setAttribute('role', 'timer');
   countdownEl.textContent = '3';
   root.appendChild(countdownEl);
 

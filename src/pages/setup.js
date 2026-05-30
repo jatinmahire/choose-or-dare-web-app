@@ -409,16 +409,20 @@ export default function renderSetup(router) {
   function renderCats() {
     catGrid.innerHTML = '';
     CATEGORIES.forEach(cat => {
-      const isLocked = cat.adult && !adultUnlocked;
+      const isLocked   = cat.adult && !adultUnlocked;
       const isSelected = selectedCats.has(cat.id) && !isLocked;
       const btn = document.createElement('button');
-      btn.className = `cat-chip${isSelected?' selected':''}`;
-      btn.disabled = isLocked;
+      btn.className = `cat-chip${isSelected ? ' selected' : ''}`;
+      btn.disabled  = isLocked;
       btn.style.setProperty('color', cat.color);
+      // A11y: full state for screen readers
+      btn.setAttribute('aria-pressed', String(isSelected));
+      btn.setAttribute('aria-label',
+        `${cat.label} category${isSelected ? ', selected' : ''}${isLocked ? ', locked \u2014 enable 18+ content first' : ''}`);
       btn.innerHTML = `
-        <span class="cat-dot" style="background:${cat.color}"></span>
+        <span class="cat-dot" style="background:${cat.color}" aria-hidden="true"></span>
         <span class="cat-name" style="color:#e6e0ee">${cat.label}</span>
-        ${isLocked ? '<span class="cat-lock">🔒</span>' : (isSelected ? '<span class="cat-lock">✓</span>' : '')}
+        ${isLocked ? '<span class="cat-lock" aria-hidden="true">&#128274;</span>' : (isSelected ? '<span class="cat-lock" aria-hidden="true">&#10003;</span>' : '')}
       `;
       btn.addEventListener('click', () => {
         if (selectedCats.has(cat.id)) selectedCats.delete(cat.id);

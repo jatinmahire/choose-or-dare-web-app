@@ -189,6 +189,29 @@ button {
   border:     0;
 }
 
+/* Skip link — invisible until keyboard-focused */
+.skip-link:focus {
+  position:      fixed;
+  top:           12px;
+  left:          12px;
+  z-index:       99999;
+  width:         auto;
+  height:        auto;
+  padding:       12px 20px;
+  margin:        0;
+  overflow:      visible;
+  clip:          auto;
+  white-space:   normal;
+  background:    var(--primary);
+  color:         #fff;
+  font-weight:   700;
+  border-radius: 8px;
+  text-decoration: none;
+  box-shadow:    0 4px 16px rgba(124,77,255,.5);
+  outline:       2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* Flex */
 .flex        { display: flex; }
 .flex-col    { display: flex; flex-direction: column; }

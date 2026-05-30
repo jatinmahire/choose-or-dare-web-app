@@ -50,18 +50,15 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Firebase into its own chunk
+            // Firebase into its own chunk (largest dep ~200KB)
             if (id.includes('node_modules/firebase')) {
               return 'firebase';
             }
-            // Utility libraries into their own chunk
-            if (
-              id.includes('node_modules/dompurify') ||
-              id.includes('node_modules/qrcode') ||
-              id.includes('node_modules/jsqr')
-            ) {
-              return 'utils';
+            // DOMPurify into its own chunk (used across all pages)
+            if (id.includes('node_modules/dompurify')) {
+              return 'purify';
             }
+            // qrcode + jsqr are dynamic imports — Rollup auto-splits them
           },
           // Deterministic asset naming for long-term caching
           assetFileNames: 'assets/[name]-[hash][extname]',

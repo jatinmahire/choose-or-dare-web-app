@@ -11,17 +11,31 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Choose or Dare</title>
+
+    <!-- Performance: preconnect to Firebase/Google origins -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://apis.google.com" crossorigin />
+    <link rel="dns-prefetch" href="https://firebaseio.com" />
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+
     <link rel="stylesheet" href="/src/styles/theme.css" />
     <link rel="stylesheet" href="/src/styles/global.css" />
     <link rel="stylesheet" href="/src/styles/animations.css" />
     <link rel="stylesheet" href="/src/styles/components.css" />
   </head>
   <body>
+    <!-- Skip to content link for keyboard/screen reader users -->
+    <a href="#app" class="skip-link sr-only">Skip to content</a>
+
     <!-- Boot spinner: removed by main.js after first auth resolution -->
-    <div id="init-spinner" style="position:fixed;inset:0;background:#0A0A0F;display:grid;place-items:center;z-index:9999">
-      <div style="width:44px;height:44px;border-radius:50%;border:3px solid rgba(124,77,255,0.2);border-top-color:#7C4DFF;animation:spin 0.8s linear infinite"></div>
+    <div id="init-spinner" aria-hidden="true" style="position:fixed;inset:0;background:#0A0A0F;display:grid;place-items:center;z-index:9999">
+      <div style="width:44px;height:44px;border-radius:50%;border:3px solid rgba(124,77,255,0.2);border-top-color:#7C4DFF;animation:spin 0.8s linear infinite" role="progressbar" aria-label="Loading app…"></div>
     </div>
-    <div id="app"></div>
+
+    <!-- Toast announcements for screen readers -->
+    <div id="toast-live" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+    <main id="app" tabindex="-1"></main>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

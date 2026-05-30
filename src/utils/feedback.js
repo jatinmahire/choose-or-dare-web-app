@@ -174,6 +174,14 @@ export function showToast(msg, type = 'info', dur = 2800) {
 
   container.appendChild(toast);
 
+  // Mirror message to dedicated aria-live region for reliable SR announcement
+  const liveRegion = document.getElementById('toast-live');
+  if (liveRegion) {
+    liveRegion.textContent = '';
+    // Tiny delay so the DOM change is detected by the live region observer
+    requestAnimationFrame(() => { liveRegion.textContent = msg; });
+  }
+
   // Auto-remove
   const removeToast = () => {
     toast.style.opacity = '0';

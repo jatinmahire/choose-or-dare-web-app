@@ -313,7 +313,7 @@ export default async function renderCard(router, params) {
         <span class="cr-player-name" id="cr-player-name-el"></span>
       </div>
       <span class="cr-round-badge">Round ${roundNum}</span>
-      <button class="cr-skip-btn" id="cr-skip">SKIP</button>
+      <button class="cr-skip-btn" id="cr-skip" aria-label="Skip this card">SKIP</button>
     </header>
 
     <!-- End Game button (shown after 3 rounds) -->
@@ -476,12 +476,13 @@ export default async function renderCard(router, params) {
 
     title.textContent = 'Did they answer?';
     content.innerHTML = `
-      <button class="cr-truth-done-btn" id="cr-truth-done">
+      <button class="cr-truth-done-btn" id="cr-truth-done" aria-label="Result: Answered">
         ✅ Answered
       </button>
       <div style="height:10px"></div>
       <button class="cr-truth-done-btn" id="cr-truth-chickened"
-        style="background:rgba(244,67,54,.12);border-color:#F44336;color:#F44336">
+        style="background:rgba(244,67,54,.12);border-color:#F44336;color:#F44336"
+        aria-label="Result: Chickened Out">
         🐔 Chickened Out
       </button>
     `;
@@ -548,16 +549,20 @@ export default async function renderCard(router, params) {
       content.innerHTML = `
         <div class="cr-vote-grid">
           ${voters.map((name, i) => {
-            const state = votes.get(name);
-            return `<button class="cr-vote-btn${state ? ' ' + state : ''}" data-name="${name}">
-              <div style="font-size:18px">${state === 'done' ? '✅' : state === 'chickened' ? '🐔' : '👆'}</div>
+            const state    = votes.get(name);
+            const stateTxt = state === 'done' ? 'Done' : state === 'chickened' ? 'Chickened out' : 'Not voted yet';
+            return `<button class="cr-vote-btn${state ? ' ' + state : ''}" data-name="${name}"
+              aria-label="${name.split(' ')[0]}: ${stateTxt} — tap to toggle"
+              aria-pressed="${state === 'done' ? 'true' : 'false'}">
+              <div style="font-size:18px" aria-hidden="true">${state === 'done' ? '\u2705' : state === 'chickened' ? '\uD83D\uDC14' : '\uD83D\uDC46'}</div>
               <span class="cr-vote-btn-name">${name.split(' ')[0]}</span>
               <span class="cr-vote-btn-status">${state ? state.toUpperCase() : 'TAP TO VOTE'}</span>
             </button>`;
           }).join('')}
         </div>
-        <button class="cr-submit-btn" id="cr-submit" ${!allVoted ? 'disabled' : ''}>
-          Submit Votes (${doneCount}✅ ${chickenCount}🐔)
+        <button class="cr-submit-btn" id="cr-submit" ${!allVoted ? 'disabled' : ''}
+          aria-label="Submit votes: ${doneCount} done, ${chickenCount} chickened out">
+          Submit Votes (${doneCount}\u2705 ${chickenCount}\uD83D\uDC14)
         </button>
       `;
 
