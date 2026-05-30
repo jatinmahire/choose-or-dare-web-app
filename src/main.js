@@ -10,7 +10,7 @@ import { store }              from './store.js';
 import { router }             from './router.js';
 import { isMobile, initLandscapeBlock } from './utils/device.js';
 import { initOfflineBanner }  from './utils/feedback.js';
-import { onAuthChange }       from './auth.js';
+import { onAuthChange, resumeRedirectSignIn } from './auth.js';
 
 // ── Desktop redirect ────────────────────────────────────────────────────────
 if (!isMobile()) {
@@ -61,34 +61,39 @@ if (!isMobile()) {
     .register('/desktop',     () => import('./pages/desktop.js').then(m => m.default(router)),   false)
     .register('/404',         () => import('./pages/notfound.js').then(m => m.default(router)),  false);
 
-  // 4. Watch Firebase auth state — initialise router AFTER first auth resolution
+  // 4. Handle redirect sign-in return (mobile), then watch Firebase auth state.
+  //    resumeRedirectSignIn() must run before onAuthChange starts routing,
+  //    so the user is set before the first route renders.
   let routerStarted = false;
 
-  onAuthChange((user) => {
-    store.user = user ?? null;
+  // Try to recover a pending redirect sign-in first (runs fast if no redirect pending)
+  resumeRedirectSignIn().catch(() => {}).finally(() => {
+    onAuthChange((user) => {
+      store.user = user ?? null;
 
-    if (!routerStarted) {
-      routerStarted = true;
+      if (!routerStarted) {
+        routerStarted = true;
 
-      const app = document.getElementById('app');
-      router.init(app);
+        const app = document.getElementById('app');
+        router.init(app);
 
-      // Remove the boot spinner once the first page begins rendering
-      requestAnimationFrame(() => {
-        const spinner = document.getElementById('init-spinner');
-        if (spinner) {
-          spinner.style.transition = 'opacity 0.3s';
-          spinner.style.opacity = '0';
-          setTimeout(() => spinner.remove(), 300);
+        // Remove the boot spinner once the first page begins rendering
+        requestAnimationFrame(() => {
+          const spinner = document.getElementById('init-spinner');
+          if (spinner) {
+            spinner.style.transition = 'opacity 0.3s';
+            spinner.style.opacity = '0';
+            setTimeout(() => spinner.remove(), 300);
+          }
+        });
+      } else {
+        // Subsequent auth changes (logout / re-login): re-render current path
+        const path = window.location.hash.slice(1) || '/';
+        if (!user && !['/', '/landing'].includes(path)) {
+          router.navigate('/landing', true);
         }
-      });
-    } else {
-      // Subsequent auth changes (logout / re-login): re-render current path
-      const path = window.location.hash.slice(1) || '/';
-      if (!user && !['/', '/landing'].includes(path)) {
-        router.navigate('/landing', true);
       }
-    }
+    });
   });
 
   // 5. Register service worker for PWA / offline caching

@@ -267,12 +267,30 @@ export default function renderLanding(router) {
     btn.classList.add('loading');
     try {
       const user = await signInWithGoogle();
-      store.user = user;
-      router.navigate('/home', true);
+      // On mobile: signInWithGoogle() triggers a redirect — page navigates away.
+      // The code below only runs on desktop (popup flow).
+      if (user) {
+        store.user = user;
+        router.navigate('/home', true);
+      } else {
+        // Mobile redirect initiated — update button text to inform user
+        btn.querySelector('.google-btn-text').textContent = 'Redirecting to Google…';
+        // Keep button disabled; page will reload after redirect
+      }
     } catch (err) {
-      console.error('[landing] sign-in error:', err);
-      showToast(err.message ?? 'Sign-in failed. Please try again.', 'error');
-    } finally {
+      // auth/popup-closed-by-user: user dismissed the popup — not an error
+      if (err?.code === 'auth/popup-closed-by-user' ||
+          err?.code === 'auth/cancelled-popup-request') {
+        // Silently reset — user can try again
+      } else {
+        console.error('[landing] sign-in error:', err);
+        showToast(
+          err?.code === 'auth/popup-blocked'
+            ? 'Popup blocked — tap the button again to try redirect sign-in'
+            : (err.message ?? 'Sign-in failed. Please try again.'),
+          'error'
+        );
+      }
       btn.disabled = false;
       btn.classList.remove('loading');
     }

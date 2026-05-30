@@ -2,10 +2,16 @@
 // idToken lives only in store.idToken (in-memory). Never touches DOM or storage.
 // The 55-minute auto-refresh window matches Firebase's 1-hour token lifetime
 // with a 5-minute safety margin.
+//
+// Strategy:
+//   Mobile browsers block popups → use signInWithRedirect.
+//   Desktop browsers support popups → use signInWithPopup for better UX.
 
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   getIdToken as firebaseGetIdToken,
@@ -20,24 +26,64 @@ const provider = new GoogleAuthProvider();
 // Force the account-picker screen every time so users can switch accounts.
 provider.setCustomParameters({ prompt: 'select_account' });
 
+// ── Mobile detection ──────────────────────────────────────────────────────
+// Mobile browsers (iOS Safari, Chrome Android, Brave mobile, etc.) block
+// popups reliably. Use redirect flow on mobile for seamless UX.
+function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+    || ('ontouchstart' in window && window.innerWidth < 768);
+}
+
 // ── Sign In ────────────────────────────────────────────────────────────────
 
 /**
- * Opens a Google Sign-In popup.
- * On success: stores the ID token in memory and sets the 55-min expiry clock.
+ * Signs in with Google.
+ * - Mobile: redirects to Google, returns on completion (resolves NEVER — page navigates away).
+ * - Desktop: opens popup, resolves with User on success.
  *
- * @returns {Promise<import('firebase/auth').User>}
+ * After mobile redirect, call resumeRedirectSignIn() on page load.
+ *
+ * @returns {Promise<import('firebase/auth').User | void>}
  */
 export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, provider);
-  const user   = result.user;
+  if (isMobileBrowser()) {
+    // Redirect flow — page will reload after Google auth.
+    // signInWithRedirect does not return a user; resumeRedirectSignIn() does.
+    await signInWithRedirect(auth, provider);
+    return; // unreachable — browser navigates away
+  }
 
-  // Fetch fresh token and store IN MEMORY ONLY
+  // Desktop popup flow
+  const result = await signInWithPopup(auth, provider);
+  return _storeUser(result.user);
+}
+
+/**
+ * Must be called once on app startup (before routing).
+ * Checks if the page load is a return from signInWithRedirect.
+ * If so, stores the token and returns the User; otherwise returns null.
+ *
+ * @returns {Promise<import('firebase/auth').User | null>}
+ */
+export async function resumeRedirectSignIn() {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      return _storeUser(result.user);
+    }
+  } catch (err) {
+    // Non-critical — log but don't surface to user
+    console.warn('[auth] getRedirectResult error:', err.code, err.message);
+  }
+  return null;
+}
+
+/** Stores token + user in memory, returns user. */
+async function _storeUser(user) {
   const token = await firebaseGetIdToken(user, /* forceRefresh */ false);
   store.idToken     = token;
-  store.tokenExpiry = Date.now() + 55_601_000; // 55 min 1 s in ms
+  store.tokenExpiry = Date.now() + 55_601_000; // 55 min 1 s
   store.user        = user;
-
   return user;
 }
 
