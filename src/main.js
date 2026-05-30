@@ -56,8 +56,8 @@ if (!isMobile()) {
     .register('/history',     (p) => import('./pages/history.js').then(m => m.default(router, p)),     true)
     .register('/stats',       (p) => import('./pages/stats.js').then(m => m.default(router, p)),       true)
     .register('/leaderboard', (p) => import('./pages/leaderboard.js').then(m => m.default(router, p)), true)
-    .register('/cards',       () => import('./pages/cards.js').then(m => m.default(router)),     true)
-    .register('/settings',    () => import('./pages/settings.js').then(m => m.default(router)),  true)
+    .register('/cards',       (p) => import('./pages/cards.js').then(m => m.default(router, p)),     true)
+    .register('/settings',    (p) => import('./pages/settings.js').then(m => m.default(router, p)),  true)
     .register('/desktop',     () => import('./pages/desktop.js').then(m => m.default(router)),   false)
     .register('/404',         () => import('./pages/notfound.js').then(m => m.default(router)),  false);
 
