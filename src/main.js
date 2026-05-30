@@ -45,8 +45,8 @@ if (!isMobile()) {
   router
     .register('/',            () => import('./pages/landing.js').then(m => m.default(router)),   false)
     .register('/landing',     () => import('./pages/landing.js').then(m => m.default(router)),   false)
-    .register('/home',        () => import('./pages/home.js').then(m => m.default(router)),      true)
-    .register('/setup',       () => import('./pages/setup.js').then(m => m.default(router)),     true)
+    .register('/home',        (p) => import('./pages/home.js').then(m => m.default(router)),      true)
+    .register('/setup',       (p) => import('./pages/setup.js').then(m => m.default(router)),     true)
     .register('/game',        () => import('./pages/game.js').then(m => m.default(router)),      true)
     .register('/game/:id',    (p) => import('./pages/game.js').then(m => m.default(router, p)),  true)
     .register('/card',        () => import('./pages/card.js').then(m => m.default(router)),      true)
