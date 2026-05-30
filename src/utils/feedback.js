@@ -258,3 +258,83 @@ export function initOfflineBanner() {
     },
   };
 }
+
+// ─── Pull-to-refresh ────────────────────────────────────────────────────────
+/**
+ * Attach pull-to-refresh behaviour to the window (document body scroll).
+ *
+ * @param {HTMLElement} indicatorEl  - Element shown during pull (text/spinner)
+ * @param {() => Promise<void>} onRefresh - Async callback to reload data
+ * @returns {{ destroy: () => void }}
+ */
+export function initPullToRefresh(indicatorEl, onRefresh) {
+  let startY     = 0;
+  let pulling    = false;
+  let refreshing = false;
+
+  function onTouchStart(e) {
+    if (window.scrollY === 0) startY = e.touches[0].clientY;
+    else startY = 0;
+  }
+
+  function onTouchMove(e) {
+    if (!startY || refreshing) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 60) {
+      pulling = true;
+      indicatorEl.textContent = '\u2191 Release to refresh';
+      indicatorEl.classList.add('visible');
+    } else if (dy > 20) {
+      indicatorEl.textContent = '\u2193 Pull to refresh';
+      indicatorEl.classList.add('visible');
+    } else {
+      indicatorEl.classList.remove('visible');
+    }
+  }
+
+  async function onTouchEnd() {
+    if (!pulling) { startY = 0; return; }
+    pulling    = false;
+    startY     = 0;
+    refreshing = true;
+    indicatorEl.textContent = '\u27f3 Refreshing\u2026';
+
+    try {
+      await onRefresh();
+    } finally {
+      refreshing = false;
+      setTimeout(() => indicatorEl.classList.remove('visible'), 500);
+    }
+  }
+
+  window.addEventListener('touchstart', onTouchStart, { passive: true });
+  window.addEventListener('touchmove',  onTouchMove,  { passive: true });
+  window.addEventListener('touchend',   onTouchEnd,   { passive: true });
+
+  return {
+    destroy() {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove',  onTouchMove);
+      window.removeEventListener('touchend',   onTouchEnd);
+    },
+  };
+}
+
+// ─── Infinite scroll ────────────────────────────────────────────────────────
+/**
+ * Watch a sentinel element with IntersectionObserver.
+ * Fires onLoadMore() whenever the sentinel enters the viewport.
+ *
+ * @param {HTMLElement} sentinelEl   - Empty div at end of scrollable list
+ * @param {() => void}  onLoadMore  - Callback to load next page
+ * @param {string}     [rootMargin] - IO rootMargin (default '200px')
+ * @returns {{ disconnect: () => void }}
+ */
+export function addInfiniteScroll(sentinelEl, onLoadMore, rootMargin = '200px') {
+  const observer = new IntersectionObserver(
+    (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+    { rootMargin }
+  );
+  observer.observe(sentinelEl);
+  return { disconnect: () => observer.disconnect() };
+}

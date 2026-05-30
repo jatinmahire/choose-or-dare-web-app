@@ -2,15 +2,18 @@
 // Strategy: cache-first for static assets, network-first for /api/ calls.
 // Caches successful /api/cards/random responses for offline play.
 
-const CACHE_NAME = 'cod-v2';
+const CACHE_NAME = 'cod-v1';
 
 // Static assets pre-cached on install
+// CSS/JS chunks are handled lazily (cache-first) once fetched;
+// only the shell assets are pre-cached to keep install lightweight.
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/sw.js',
 ];
 
 // ── Install: pre-cache static shell ────────────────────────────────────────

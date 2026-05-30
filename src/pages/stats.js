@@ -4,7 +4,7 @@
 
 import { store }          from '../store.js';
 import { api }            from '../utils/api.js';
-import { showToast }      from '../utils/feedback.js';
+import { showToast, initPullToRefresh } from '../utils/feedback.js';
 import { mountBottomNav } from './home.js';
 
 // ── Category metadata ─────────────────────────────────────────────────────────
@@ -300,8 +300,18 @@ export default function renderStats(router, params) {
 
   root.innerHTML = `
     <h1 class="st-topbar">Your Stats</h1>
+    <div class="hy-ptr" id="st-ptr" style="text-align:center;height:0;overflow:hidden;font-family:'Space Grotesk',system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;color:#7C4DFF;transition:height .2s"></div>
     <div id="st-body">${skeletonHTML()}</div>
   `;
+
+  // ── Pull-to-refresh indicator style (reuse hy-ptr pattern) ────────────────
+  const styleEl = document.head.querySelector('#st-ptr-style') ?? (() => {
+    const s = document.createElement('style');
+    s.id = 'st-ptr-style';
+    s.textContent = '.hy-ptr.visible{height:36px;line-height:36px;}';
+    document.head.appendChild(s);
+    return s;
+  })();
 
   app.appendChild(root);
   mountBottomNav(router, 'stats');
@@ -439,18 +449,26 @@ export default function renderStats(router, params) {
   }
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
-  api.getStats()
-    .then(stats => { if (!aborted) renderPopulated(stats); })
-    .catch(err => {
-      if (aborted) return;
-      console.warn('[stats] load error:', err);
-      showToast('Could not load stats', 'error');
-      // Render zeroed state so UI is usable
-      renderPopulated({});
-    });
+  function loadStats() {
+    return api.getStats()
+      .then(stats => { if (!aborted) renderPopulated(stats); })
+      .catch(err => {
+        if (aborted) return;
+        console.warn('[stats] load error:', err);
+        showToast('Could not load stats', 'error');
+        renderPopulated({});
+      });
+  }
+
+  loadStats();
+
+  // ── Pull-to-refresh ───────────────────────────────────────────────────────
+  const ptrEl  = root.querySelector('#st-ptr');
+  const ptr    = initPullToRefresh(ptrEl, loadStats);
 
   return () => {
     aborted = true;
+    ptr.destroy();
     document.getElementById('bottom-nav')?.remove();
   };
 }

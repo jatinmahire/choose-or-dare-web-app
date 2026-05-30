@@ -3,7 +3,7 @@
 
 import { store }          from '../store.js';
 import { api }            from '../utils/api.js';
-import { showToast }      from '../utils/feedback.js';
+import { showToast, initPullToRefresh, addInfiniteScroll } from '../utils/feedback.js';
 import { mountBottomNav } from './home.js';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -480,45 +480,25 @@ export default function renderHistory(router, params) {
     });
   });
 
-  // ── IntersectionObserver for infinite scroll ──────────────────────────────
-  const observer = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting && hasMore && !loading) {
-      page++;
-      loadPage(page, true);
-    }
-  }, { rootMargin: '200px' });
-  observer.observe(sentinel);
+  // Infinite scroll via shared utility
+  const scroll = addInfiniteScroll(sentinel, () => {
+    if (hasMore && !loading) { page++; loadPage(page, true); }
+  });
 
-  // ── Pull-to-refresh ────────────────────────────────────────────────────────
-  let touchStartY = 0;
-  let pulling     = false;
+  // Pull-to-refresh via shared utility
+  const ptr = initPullToRefresh(ptrEl, async () => {
+    page = 1;
+    await loadPage(1, false);
+  });
 
-  function onTouchStart(e) { if (window.scrollY === 0) touchStartY = e.touches[0].clientY; }
-  function onTouchMove(e) {
-    const dy = e.touches[0].clientY - touchStartY;
-    if (dy > 60) { pulling = true; ptrEl.textContent = '↑ Release to refresh'; ptrEl.classList.add('visible'); }
-    else if (dy > 20) { ptrEl.textContent = '↓ Pull to refresh'; ptrEl.classList.add('visible'); }
-    else { ptrEl.classList.remove('visible'); }
-  }
-  function onTouchEnd() {
-    if (pulling) { page = 1; loadPage(1, false); }
-    pulling = false; touchStartY = 0;
-    setTimeout(() => ptrEl.classList.remove('visible'), 500);
-  }
-
-  root.addEventListener('touchstart', onTouchStart, { passive: true });
-  root.addEventListener('touchmove',  onTouchMove,  { passive: true });
-  root.addEventListener('touchend',   onTouchEnd,   { passive: true });
 
   // ── Initial load ──────────────────────────────────────────────────────────
   loadPage(1);
 
   // Cleanup
   return () => {
-    observer.disconnect();
+    scroll.disconnect();
+    ptr.destroy();
     document.getElementById('bottom-nav')?.remove();
-    root.removeEventListener('touchstart', onTouchStart);
-    root.removeEventListener('touchmove',  onTouchMove);
-    root.removeEventListener('touchend',   onTouchEnd);
   };
 }
