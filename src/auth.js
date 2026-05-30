@@ -38,21 +38,26 @@ export async function signInWithGoogle() {
 }
 
 /**
- * Must be called once on app startup (before routing).
- * Checks if the page load is a return from signInWithRedirect.
- * If so, stores the token and returns the User; otherwise returns null.
+ * Must be called once on app startup (after redirect return).
+ * Has a 5-second timeout — getRedirectResult can hang on slow connections.
+ * onAuthChange handles auth state independently so this never blocks routing.
  *
  * @returns {Promise<import('firebase/auth').User | null>}
  */
 export async function resumeRedirectSignIn() {
   try {
-    const result = await getRedirectResult(auth);
+    // Race getRedirectResult against a 5-second timeout
+    const result = await Promise.race([
+      getRedirectResult(auth),
+      new Promise((_res, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 5000)
+      ),
+    ]);
     if (result?.user) {
       return _storeUser(result.user);
     }
   } catch (err) {
-    // Non-critical — log but don't surface to user
-    console.warn('[auth] getRedirectResult error:', err.code, err.message);
+    console.warn('[auth] resumeRedirectSignIn:', err.code ?? err.message);
   }
   return null;
 }

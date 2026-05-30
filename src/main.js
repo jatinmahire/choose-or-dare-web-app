@@ -61,40 +61,54 @@ if (!isMobile()) {
     .register('/desktop',     () => import('./pages/desktop.js').then(m => m.default(router)),   false)
     .register('/404',         () => import('./pages/notfound.js').then(m => m.default(router)),  false);
 
-  // 4. Handle redirect sign-in return (mobile), then watch Firebase auth state.
-  //    resumeRedirectSignIn() must run before onAuthChange starts routing,
-  //    so the user is set before the first route renders.
+  // 4. Boot the router immediately via onAuthChange.
+  //    Firebase's onAuthStateChanged handles redirect results internally —
+  //    we do NOT need to await getRedirectResult() before starting.
+  //    resumeRedirectSignIn() runs in parallel only to store our token/expiry.
   let routerStarted = false;
 
-  // Try to recover a pending redirect sign-in first (runs fast if no redirect pending)
-  resumeRedirectSignIn().catch(() => {}).finally(() => {
-    onAuthChange((user) => {
-      store.user = user ?? null;
-
-      if (!routerStarted) {
-        routerStarted = true;
-
-        const app = document.getElementById('app');
-        router.init(app);
-
-        // Remove the boot spinner once the first page begins rendering
-        requestAnimationFrame(() => {
-          const spinner = document.getElementById('init-spinner');
-          if (spinner) {
-            spinner.style.transition = 'opacity 0.3s';
-            spinner.style.opacity = '0';
-            setTimeout(() => spinner.remove(), 300);
-          }
-        });
-      } else {
-        // Subsequent auth changes (logout / re-login): re-render current path
-        const path = window.location.hash.slice(1) || '/';
-        if (!user && !['/', '/landing'].includes(path)) {
-          router.navigate('/landing', true);
-        }
+  function startRouter(app) {
+    if (routerStarted) return;
+    routerStarted = true;
+    router.init(app);
+    requestAnimationFrame(() => {
+      const spinner = document.getElementById('init-spinner');
+      if (spinner) {
+        spinner.style.transition = 'opacity 0.3s';
+        spinner.style.opacity = '0';
+        setTimeout(() => spinner.remove(), 300);
       }
     });
+  }
+
+  const appEl = document.getElementById('app');
+
+  // Safety net: if onAuthChange never fires within 6s, start the router anyway
+  // so the user never sees an infinite spinner.
+  const safetyTimer = setTimeout(() => {
+    console.warn('[main] auth timeout — starting router without user');
+    startRouter(appEl);
+  }, 6000);
+
+  onAuthChange((user) => {
+    clearTimeout(safetyTimer);
+    store.user = user ?? null;
+
+    if (!routerStarted) {
+      startRouter(appEl);
+    } else {
+      // Subsequent auth changes (logout / re-login)
+      const path = window.location.hash.slice(1) || '/';
+      if (!user && !['/', '/landing'].includes(path)) {
+        router.navigate('/landing', true);
+      }
+    }
   });
+
+  // Run in parallel — stores idToken/expiry after redirect; never blocks routing.
+  resumeRedirectSignIn().catch(err =>
+    console.warn('[main] resumeRedirectSignIn:', err?.code ?? err?.message)
+  );
 
   // 5. Register service worker for PWA / offline caching
   if ('serviceWorker' in navigator) {
