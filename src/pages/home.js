@@ -3,7 +3,7 @@
 
 import { store }         from '../store.js';
 import { api }           from '../utils/api.js';
-import { showToast }     from '../utils/feedback.js';
+import { showToast, haptic } from '../utils/feedback.js';
 
 // ── Avatar colors (8 palette options for player avatars) ─────────────────────
 export const AV_COLORS = [
@@ -333,9 +333,11 @@ export default function renderHome(router) {
 
   // ── Event listeners ─────────────────────────────────────────────────────
   root.querySelector('#start-game-btn').addEventListener('click', () => {
+    haptic.medium();
     router.navigate('/setup');
   });
   root.querySelector('#see-all-btn').addEventListener('click', () => {
+    haptic.light();
     router.navigate('/history');
   });
 

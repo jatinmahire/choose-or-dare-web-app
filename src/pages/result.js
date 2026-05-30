@@ -3,7 +3,7 @@
 
 import { store }          from '../store.js';
 import { mountBottomNav } from './home.js';
-import { sound, haptic }  from '../utils/feedback.js';
+import { sound, haptic, showToast } from '../utils/feedback.js';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -391,8 +391,12 @@ export default function renderResult(router, params) {
   sound.winner();
   haptic.winner();
 
+  // Announce session saved once after confetti starts
+  setTimeout(() => showToast('Session saved to history ✓', 'success', 3500), 800);
+
   // ── Button handlers ───────────────────────────────────────────────────────
   root.querySelector('#rs-play-again').addEventListener('click', () => {
+    haptic.medium();
     // Preserve same players + settings, reset game state except players
     if (session) {
       const prev = { ...session, sessionId: crypto.randomUUID() };
@@ -403,11 +407,13 @@ export default function renderResult(router, params) {
   });
 
   root.querySelector('#rs-new-game').addEventListener('click', () => {
+    haptic.medium();
     store.resetGame?.();
     router.navigate('/setup');
   });
 
   root.querySelector('#rs-view-hist').addEventListener('click', () => {
+    haptic.light();
     router.navigate('/history');
   });
 

@@ -2,10 +2,10 @@
 // Player management, category chips, adult toggle, timer, validation → createRoom
 
 import { store }        from '../store.js';
-import { createRoom }   from '../firestore.js';
-import { showToast }    from '../utils/feedback.js';
-import { AV_COLORS }    from './home.js';
+import { showToast, haptic } from '../utils/feedback.js';
 import { sanitizeName } from '../utils/security.js';
+import { createRoom }   from '../firestore.js';
+import { AV_COLORS }    from './home.js';
 
 // ── Avatar colour palette ────────────────────────────────────────────────────
 // AV_COLORS imported from home.js (8 colours)
@@ -362,6 +362,7 @@ export default function renderSetup(router) {
 
       // Bind avatar click → toggle picker
       row.querySelector('.av-circle').addEventListener('click', () => {
+        haptic.light();
         openPickerIdx = openPickerIdx === i ? null : i;
         renderPlayers();
       });
@@ -378,6 +379,7 @@ export default function renderSetup(router) {
       const delBtn = row.querySelector('.delete-btn');
       if (players.length > 2) {
         delBtn.addEventListener('click', () => {
+          haptic.light();
           players.splice(i, 1);
           if (openPickerIdx === i) openPickerIdx = null;
           else if (openPickerIdx > i) openPickerIdx--;
@@ -389,6 +391,7 @@ export default function renderSetup(router) {
       // Bind color dots
       picker.querySelectorAll('.color-dot').forEach(dot => {
         dot.addEventListener('click', () => {
+          haptic.light();
           players[i].color = dot.dataset.color;
           openPickerIdx = null;
           renderPlayers();
@@ -425,6 +428,7 @@ export default function renderSetup(router) {
         ${isLocked ? '<span class="cat-lock" aria-hidden="true">&#128274;</span>' : (isSelected ? '<span class="cat-lock" aria-hidden="true">&#10003;</span>' : '')}
       `;
       btn.addEventListener('click', () => {
+        haptic.light();
         if (selectedCats.has(cat.id)) selectedCats.delete(cat.id);
         else selectedCats.add(cat.id);
         renderCats();
@@ -436,6 +440,7 @@ export default function renderSetup(router) {
 
   // ── Adult toggle ──────────────────────────────────────────────────────────
   adultToggle.addEventListener('click', () => {
+    haptic.light();
     adultUnlocked = !adultUnlocked;
     store.isAdultUnlocked = adultUnlocked;
     adultToggle.classList.toggle('on', adultUnlocked);
@@ -451,6 +456,7 @@ export default function renderSetup(router) {
   // ── Timer segmented control ───────────────────────────────────────────────
   segControl.querySelectorAll('.seg-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      haptic.light();
       timerSecs = +btn.dataset.secs;
       segControl.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -458,19 +464,24 @@ export default function renderSetup(router) {
   });
 
   // ── Back button ───────────────────────────────────────────────────────────
-  root.querySelector('#back-btn').addEventListener('click', () => router.back());
+  root.querySelector('#back-btn').addEventListener('click', () => {
+    haptic.light();
+    router.back();
+  });
 
   // ── Add player ────────────────────────────────────────────────────────────
   addBtn.addEventListener('click', () => {
     if (players.length >= 8) return;
     const colorIdx = players.length % AV_COLORS.length;
     players.push({ name: `Player ${players.length + 1}`, color: AV_COLORS[colorIdx] });
+    haptic.light();
     renderPlayers();
   });
 
   // ── Start game ────────────────────────────────────────────────────────────
   startBtn.addEventListener('click', async () => {
     if (startBtn.disabled) return;
+    haptic.medium();
     startBtn.classList.add('loading');
     startBtn.disabled = true;
 
@@ -503,6 +514,7 @@ export default function renderSetup(router) {
       router.navigate(`/game/${roomId}`);
     } catch (err) {
       console.error('[setup] createRoom failed:', err);
+      haptic.error();
       showToast(err.message ?? 'Could not create room. Try again.', 'error');
       startBtn.classList.remove('loading');
       startBtn.disabled = false;

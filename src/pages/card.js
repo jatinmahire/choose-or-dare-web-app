@@ -375,6 +375,7 @@ export default async function renderCard(router, params) {
       store.currentCard = card;
     } catch (err) {
       console.error('[card] load error:', err);
+      showToast('Could not load card — retrying…', 'error');
       // Fallback card if API fails
       card = {
         id: `fallback-${Date.now()}`,
@@ -619,9 +620,8 @@ export default async function renderCard(router, params) {
 
   // ── Skip card ─────────────────────────────────────────────────────────────
   root.querySelector('#cr-skip').addEventListener('click', () => {
-    if (card) store.usedCardIds?.add?.(card.id);
-    if (roomId) router.navigate(`/game/${roomId}`);
-    else        router.navigate('/game');
+    haptic.light();
+    loadCard();
   });
 
   // ── End Game flow ─────────────────────────────────────────────────────────
@@ -633,6 +633,7 @@ export default async function renderCard(router, params) {
   });
 
   root.querySelector('#cr-end-confirm').addEventListener('click', async () => {
+    haptic.medium();
     const confirmBtn = root.querySelector('#cr-end-confirm');
     confirmBtn.classList.add('loading');
     confirmBtn.disabled = true;

@@ -452,6 +452,9 @@ export default function renderGame(router, params) {
         name:  safeNames[idx] ?? `P${idx + 1}`,
       });
 
+      // Haptic feedback for each finger placed
+      haptic.light();
+
       // Firestore write (throttled in firestore.js)
       if (roomId) writeFingerPos(roomId, id, x / canvas.width, y / canvas.height, idx);
     }
