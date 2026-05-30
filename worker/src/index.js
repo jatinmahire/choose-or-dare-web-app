@@ -1,4 +1,4 @@
-﻿// worker/src/index.js - Cloudflare Worker entry point with all middleware
+// worker/src/index.js - Cloudflare Worker entry point with all middleware
 import { AutoRouter, cors, json, Router } from "itty-router";
 import { requireAuth } from "./auth.js";
 
@@ -27,6 +27,9 @@ function checkRateLimit(key, max, windowMs) {
 // 1. CORS origin check (strict on mutations, permissive on GET)
 function corsCheck(request, env) {
   const origin = request.headers.get("Origin") ?? "";
+  // No Origin header = direct API call (curl, server-to-server) — skip CORS check.
+  // Browsers always send Origin on cross-origin requests, so this doesn't weaken security.
+  if (!origin) return;
   const allowed = env.ALLOWED_ORIGIN ?? "";
   const isLocal = origin.startsWith("http://localhost") || origin.startsWith("http://127.");
   const method = request.method.toUpperCase();
