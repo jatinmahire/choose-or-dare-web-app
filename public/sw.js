@@ -1,44 +1,27 @@
 // public/sw.js — Choose or Dare Service Worker
-// Strategy: cache-first for static assets, network-first for /api/ calls.
-// Caches successful /api/cards/random responses for offline play.
+// Strategy:
+//   Navigation (HTML) → network-first (always get fresh app shell)
+//   Hashed JS/CSS assets → cache-first (hash in URL = safe forever)
+//   /api/ calls → network-only (no cache, always fresh)
+//   /api/cards/random → network-first with offline fallback
 
-const CACHE_NAME = 'cod-v3';
+// Bump this whenever you need to force all clients to drop old caches.
+const CACHE_NAME = 'cod-v4';
 
-
-// Static assets pre-cached on install
-// CSS/JS chunks are handled lazily (cache-first) once fetched;
-// only the shell assets are pre-cached to keep install lightweight.
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/sw.js',
-];
-
-// ── Install: pre-cache static shell ────────────────────────────────────────
+// ── Install: skip waiting immediately so new SW takes over right away ────────
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Add static assets — ignore failures for individual items
-      return Promise.allSettled(
-        STATIC_ASSETS.map((url) => cache.add(url).catch(() => {}))
-      );
-    }).then(() => self.skipWaiting())
-  );
+  // skipWaiting() makes this SW activate without waiting for old tabs to close
+  event.waitUntil(self.skipWaiting());
 });
 
-// ── Activate: delete stale caches ──────────────────────────────────────────
+// ── Activate: delete ALL old caches, claim all clients immediately ───────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -47,39 +30,49 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Only handle GET requests
+  // Only handle GET requests from our own origin
   if (request.method !== 'GET') return;
-
-  // Skip cross-origin requests (Firebase Auth, Google APIs, etc.)
   if (url.origin !== self.location.origin) return;
 
-  // ── /api/cards/random → cache-then-network with offline fallback ──────────
+  // /api/cards/random → network-first with offline fallback
   if (url.pathname.startsWith('/api/cards/random')) {
     event.respondWith(networkFirstWithCache(request));
     return;
   }
 
-  // ── All other /api/ calls → network-only (no cache) ──────────────────────
+  // All other /api/ → network-only, never cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkOnly(request));
     return;
   }
 
-  // ── Static assets & navigation → cache-first ─────────────────────────────
-  event.respondWith(cacheFirst(request));
+  // Navigation requests (HTML) → NETWORK-FIRST
+  // This ensures new deploys are always picked up — no stale app shell.
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirstNav(request));
+    return;
+  }
+
+  // Hashed static assets (JS/CSS chunks) → cache-first
+  // Safe because Vite embeds a content hash in every asset filename.
+  // If the file changes, its URL changes too — so cached copies are always valid.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(cacheFirstAsset(request));
+    return;
+  }
+
+  // Other static files (icons, manifest) → network-first
+  event.respondWith(networkFirstNav(request));
 });
 
 // ── Strategy implementations ────────────────────────────────────────────────
 
 /**
- * Cache-first: serve from cache if available, otherwise fetch + store.
- * For navigation requests, fall back to /index.html (SPA shell).
+ * Network-first for HTML navigation.
+ * Falls back to cached index.html if fully offline.
  */
-async function cacheFirst(request) {
+async function networkFirstNav(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -87,30 +80,46 @@ async function cacheFirst(request) {
     }
     return response;
   } catch {
-    // Navigation fallback to SPA shell
-    if (request.mode === 'navigate') {
-      const shell = await cache.match('/index.html');
-      if (shell) return shell;
-    }
-    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+    // Offline fallback: serve cached shell
+    const shell = await cache.match('/index.html') || await cache.match('/');
+    if (shell) return shell;
+    return new Response('<h1>Offline</h1>', {
+      status: 503,
+      headers: { 'Content-Type': 'text/html' },
+    });
   }
 }
 
 /**
- * Network-first: try network, fall back to cache on failure.
- * Used for /api/cards/random so offline play still gets a card.
+ * Cache-first for hashed /assets/ files.
+ * These never change for a given URL, so caching indefinitely is safe.
+ */
+async function cacheFirstAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    return new Response('Asset unavailable offline', { status: 503 });
+  }
+}
+
+/**
+ * Network-first with offline cache for /api/cards/random.
  */
 async function networkFirstWithCache(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetch(request);
     if (response.ok) {
-      // Store a copy under a stable key for offline fallback
       cache.put('/api/cards/random-offline', response.clone());
     }
     return response;
   } catch {
-    // Offline: return cached random card if available
     const cached = await cache.match('/api/cards/random-offline');
     if (cached) return cached;
     return new Response(
