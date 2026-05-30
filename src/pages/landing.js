@@ -2,7 +2,7 @@
 // Design: Stitch "Nocturnal Editorial" system — editorial left-aligned layout,
 // shimmer CTA, floating depth circles, entrance animations.
 
-import { signInWithGoogle } from '../auth.js';
+import { signInWithGoogle, onAuthChange } from '../auth.js';
 import { store }            from '../store.js';
 import { showToast }        from '../utils/feedback.js';
 
@@ -269,15 +269,26 @@ function injectStyles() {
 export default function renderLanding(router) {
   injectStyles();
 
-
   const app = document.getElementById('app');
   if (!app) return;
 
-  // If already signed in, skip landing
+  // If already signed in synchronously, go straight to home
   if (store.user) {
     router.navigate('/home', true);
     return;
   }
+
+  // Safety net: subscribe to auth changes inside the landing page.
+  // If the user signs in (Google redirect completes) while this page is
+  // still mounted, navigate to /home immediately.
+  // This is independent of main.js logic, so it works even if an old
+  // cached main.js bundle doesn't have the navigation fix.
+  let _unsubscribeAuth = onAuthChange((user) => {
+    if (user) {
+      if (_unsubscribeAuth) { _unsubscribeAuth(); _unsubscribeAuth = null; }
+      router.navigate('/home', true);
+    }
+  });
 
   app.innerHTML = '';
 
