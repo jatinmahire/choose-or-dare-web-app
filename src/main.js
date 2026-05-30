@@ -118,13 +118,18 @@ if (!isMobile()) {
     console.warn('[main] resumeRedirectSignIn:', err?.code ?? err?.message)
   );
 
-  // 5. Register service worker for PWA / offline caching
+
+  // 5. Unregister any old service workers and clear all caches.
+  //    The SW caused stale-cache issues where old JS kept being served
+  //    after deploys. Cloudflare Pages CDN handles caching correctly
+  //    via ETags — no SW needed.
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
-        .then(reg => console.debug('[sw] registered:', reg.scope))
-        .catch(err => console.warn('[sw] registration failed:', err));
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((reg) => reg.unregister());
     });
+    // Also wipe all SW caches (cod-v1, cod-v2, cod-v3, cod-v4, etc.)
+    if (window.caches) {
+      caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+    }
   }
 }
