@@ -2,11 +2,50 @@
 // Data: store.roundResults (in memory from card.js rounds)
 
 import { store }          from '../store.js';
+import { api }            from '../utils/api.js';
 import { mountBottomNav } from './home.js';
 import { sound, haptic, showToast } from '../utils/feedback.js';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const CSS = `
+/* Saving overlay */
+@keyframes rs-spin { to { transform: rotate(360deg); } }
+.rs-save-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,10,15,.9); backdrop-filter: blur(8px);
+  z-index: 99; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+  transition: opacity .3s;
+}
+.rs-save-overlay.hidden { opacity: 0; pointer-events: none; }
+.rs-save-spinner {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 4px solid rgba(124,77,255,.25);
+  border-top-color: #7C4DFF;
+  animation: rs-spin .8s linear infinite;
+}
+.rs-save-label {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: 16px; font-weight: 600; color: #cac3d8;
+}
+/* Save error banner */
+.rs-save-error {
+  margin: 0 20px 16px;
+  background: rgba(244,67,54,.12); border: 1px solid rgba(244,67,54,.35);
+  border-radius: 14px; padding: 14px 16px;
+  display: none; flex-direction: column; gap: 10px;
+  position: relative; z-index: 1;
+}
+.rs-save-error.visible { display: flex; }
+.rs-save-error-text {
+  font-size: 14px; color: #ff7675; line-height: 1.4;
+}
+.rs-save-retry-btn {
+  height: 40px; border-radius: 10px; border: 1.5px solid rgba(244,67,54,.5);
+  background: rgba(244,67,54,.12); color: #ff7675;
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+}
 @keyframes rs-slide-right {
   from { transform: translateX(40px); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
@@ -293,6 +332,12 @@ export default function renderResult(router, params) {
   root.className = 'rs-root';
 
   root.innerHTML = `
+    <!-- Saving overlay (shown while saveSession() is in flight) -->
+    <div class="rs-save-overlay" id="rs-save-overlay" role="status" aria-live="polite">
+      <div class="rs-save-spinner"></div>
+      <span class="rs-save-label">Saving session…</span>
+    </div>
+
     <canvas class="rs-confetti" id="rs-confetti"></canvas>
 
     <!-- Header -->
@@ -364,10 +409,16 @@ export default function renderResult(router, params) {
       }).join('')}
     </div>
 
+    <!-- Save error banner (shown if saveSession fails) -->
+    <div class="rs-save-error" id="rs-save-error" role="alert">
+      <span class="rs-save-error-text" id="rs-save-error-text">Could not save session.</span>
+      <button class="rs-save-retry-btn" id="rs-save-retry">Retry Save</button>
+    </div>
+
     <!-- Actions -->
     <div class="rs-actions">
-      <button class="rs-play-again" id="rs-play-again">Play Again 🎮</button>
-      <button class="rs-new-game"   id="rs-new-game">New Game</button>
+      <button class="rs-play-again" id="rs-play-again" disabled>Play Again 🎮</button>
+      <button class="rs-new-game"   id="rs-new-game"   disabled>New Game</button>
       <button class="rs-view-history" id="rs-view-hist">View History</button>
     </div>
   `;
@@ -388,11 +439,53 @@ export default function renderResult(router, params) {
   // ── Launch confetti ───────────────────────────────────────────────────────
   const canvas   = root.querySelector('#rs-confetti');
   const stopConf = launchConfetti(canvas);
-  sound.winner();
-  haptic.winner();
 
-  // Announce session saved once after confetti starts
-  setTimeout(() => showToast('Session saved to history ✓', 'success', 3500), 800);
+  // ── Save session to D1 ────────────────────────────────────────────────────
+  const overlay   = root.querySelector('#rs-save-overlay');
+  const errBanner = root.querySelector('#rs-save-error');
+  const errText   = root.querySelector('#rs-save-error-text');
+  const retryBtn  = root.querySelector('#rs-save-retry');
+  const actionBtns = [root.querySelector('#rs-play-again'), root.querySelector('#rs-new-game')];
+
+  async function saveSessionData() {
+    overlay.classList.remove('hidden');
+    errBanner.classList.remove('visible');
+    actionBtns.forEach(b => b && (b.disabled = true));
+
+    try {
+      await api.saveSession({
+        sessionId: roomId ?? crypto.randomUUID(),
+        players,
+        categories:   session?.categories  ?? [],
+        totalRounds,
+        playerCount:  players.length,
+        rounds: roundResults.map(r => ({
+          player_name: r.playerName,
+          card_text:   r.cardText,
+          card_type:   r.cardType,
+          category:    r.category,
+          result:      r.result,
+          duration:    r.duration ?? 0,
+        })),
+      });
+
+      overlay.classList.add('hidden');
+      actionBtns.forEach(b => b && (b.disabled = false));
+      sound.winner();
+      haptic.winner();
+      showToast('Session saved ✓', 'success', 3000);
+    } catch (err) {
+      console.error('[result] saveSession error:', err);
+      overlay.classList.add('hidden');
+      errText.textContent = err.message ?? 'Could not save session. Tap Retry.';
+      errBanner.classList.add('visible');
+      // Keep action buttons enabled — game data is in memory
+      actionBtns.forEach(b => b && (b.disabled = false));
+    }
+  }
+
+  retryBtn.addEventListener('click', saveSessionData);
+  saveSessionData();
 
   // ── Button handlers ───────────────────────────────────────────────────────
   root.querySelector('#rs-play-again').addEventListener('click', () => {

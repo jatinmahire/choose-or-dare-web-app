@@ -129,12 +129,13 @@ export const api = {
    * @param {string[]} categories - e.g. ['FRIENDLY', 'PARTY']
    * @param {boolean}  adult      - Include adult-only cards
    */
-  getRandomCard(sessionId = '', categories = ['FRIENDLY'], adult = false) {
+  getRandomCard(sessionId = '', categories = ['FRIENDLY'], adult = false, usedIds = '') {
     const cats = categories.join(',');
     const params = new URLSearchParams({
       categories: cats,
       adult: adult ? '1' : '0',
       ...(sessionId ? { sessionId } : {}),
+      ...(usedIds    ? { usedIds }   : {}),
     });
     return workerFetch(`/api/cards/random?${params}`);
   },

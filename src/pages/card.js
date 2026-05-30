@@ -69,6 +69,54 @@ const CSS = `
   opacity: 0; pointer-events: none; transition: opacity .3s;
 }
 .cr-end-btn.visible { opacity: 1; pointer-events: all; }
+/* ── Card load error state ── */
+.cr-load-error {
+  width: 100%; max-width: 320px; aspect-ratio: 0.65;
+  background: rgba(244,67,54,.06);
+  border: 1.5px dashed rgba(244,67,54,.3);
+  border-radius: 22px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; padding: 24px;
+}
+.cr-load-error-emoji { font-size: 40px; }
+.cr-load-error-text {
+  font-size: 14px; color: #948ea1; text-align: center; line-height: 1.5;
+}
+.cr-load-retry-btn {
+  height: 44px; padding: 0 28px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg,#7C4DFF,#9C27B0);
+  color: #fff; font-family: 'Hanken Grotesk',system-ui,sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  touch-action: manipulation;
+}
+/* ── Critical full-screen error overlay ── */
+.cr-critical-overlay {
+  position: fixed; inset: 0;
+  background: #0A0A0F; z-index: 200;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; padding: 32px;
+  text-align: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+}
+.cr-critical-overlay.visible { opacity: 1; pointer-events: all; }
+.cr-critical-emoji { font-size: 56px; }
+.cr-critical-title {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-size: 24px; font-weight: 900; color: #e6e0ee;
+  letter-spacing: -.03em;
+}
+.cr-critical-sub {
+  font-size: 15px; color: #948ea1; line-height: 1.5; max-width: 280px;
+}
+.cr-critical-home-btn {
+  height: 52px; padding: 0 36px; border-radius: 14px; border: none;
+  background: linear-gradient(135deg,#7C4DFF,#9C27B0);
+  color: #fff; font-family: 'Bricolage Grotesque',system-ui,sans-serif;
+  font-size: 17px; font-weight: 900; cursor: pointer; margin-top: 8px;
+}
 /* ── Card area ── */
 .cr-card-area {
   flex: 1; display: flex; flex-direction: column;
@@ -402,6 +450,27 @@ export default async function renderCard(router, params) {
 
   app.appendChild(root);
 
+  // Critical error overlay (auth expired, room deleted, etc.)
+  const critOverlay = document.createElement('div');
+  critOverlay.className = 'cr-critical-overlay';
+  critOverlay.innerHTML = `
+    <div class="cr-critical-emoji" id="cr-crit-emoji">⚠️</div>
+    <div class="cr-critical-title" id="cr-crit-title">Something went wrong</div>
+    <div class="cr-critical-sub" id="cr-crit-sub">An unexpected error occurred.</div>
+    <button class="cr-critical-home-btn" id="cr-crit-home">Go Home</button>
+  `;
+  document.body.appendChild(critOverlay);
+  critOverlay.querySelector('#cr-crit-home').addEventListener('click', () => {
+    router.navigate('/home', true);
+  });
+
+  function showCriticalError(title, sub, emoji = '⚠️') {
+    critOverlay.querySelector('#cr-crit-emoji').textContent  = emoji;
+    critOverlay.querySelector('#cr-crit-title').textContent  = title;
+    critOverlay.querySelector('#cr-crit-sub').textContent    = sub;
+    critOverlay.classList.add('visible');
+  }
+
   // Set player avatar initial + name via textContent (not innerHTML)
   const avatarEl = root.querySelector('#cr-avatar');
   const nameEl   = root.querySelector('#cr-player-name-el');
@@ -419,30 +488,67 @@ export default async function renderCard(router, params) {
 
   // ── Load card ─────────────────────────────────────────────────────────────
   async function loadCard() {
+    // Remove previous error/card UI from area
+    const area = root.querySelector('#cr-card-area');
+    const prevError = area.querySelector('.cr-load-error');
+    prevError?.remove();
+    const prevCard = area.querySelector('.cr-card-wrap');
+    prevCard?.remove();
+
+    // Show skeleton while fetching
+    let skeleton = area.querySelector('#cr-skeleton');
+    if (!skeleton) {
+      skeleton = document.createElement('div');
+      skeleton.id = 'cr-skeleton';
+      skeleton.className = 'cr-skeleton-card';
+      area.appendChild(skeleton);
+    }
+    skeleton.style.display = '';
+
     try {
-      card = await api.getRandomCard(sessionId, categories, isAdult);
+      const usedIds = store.usedCardIds
+        ? [...store.usedCardIds].join(',')
+        : '';
+      const resp = await api.getRandomCard(sessionId, categories, isAdult, usedIds);
+      card = resp?.card ?? resp;
       store.currentCard = card;
     } catch (err) {
       console.error('[card] load error:', err);
-      showToast('Could not load card — retrying…', 'error');
-      // Fallback card if API fails
-      card = {
-        id: `fallback-${Date.now()}`,
-        text: cardType === 'TRUTH'
-          ? 'What is the most embarrassing thing you have ever done?'
-          : 'Do 20 jumping jacks right now!',
-        type: cardType,
-        category: categories[0] ?? 'FRIENDLY',
-        difficulty: 2,
-      };
+      if (aborted) return;
+
+      skeleton.style.display = 'none';
+
+      // Detect critical errors (auth expired, session not found)
+      const isCritical = err.message?.includes('401') ||
+                         err.message?.includes('403') ||
+                         err.message?.includes('session');
+      if (isCritical) {
+        showCriticalError(
+          'Session Expired',
+          'Your session is no longer valid. Go home and start a new game.',
+          '🔒'
+        );
+        return;
+      }
+
+      // Non-critical: show retry card in area
+      const errEl = document.createElement('div');
+      errEl.className = 'cr-load-error';
+      errEl.innerHTML = `
+        <div class="cr-load-error-emoji">🟥</div>
+        <div class="cr-load-error-text">Could not load a card.<br>Check your connection.</div>
+        <button class="cr-load-retry-btn" id="cr-load-retry">Try Again</button>
+      `;
+      area.appendChild(errEl);
+      errEl.querySelector('#cr-load-retry').addEventListener('click', () => {
+        haptic.light();
+        loadCard();
+      });
+      return;
     }
 
     if (aborted) return;
-
-    // Remove skeleton, mount card
-    const skeleton = root.querySelector('#cr-skeleton');
-    skeleton?.remove();
-
+    skeleton.style.display = 'none';
     mountCard();
   }
 
@@ -756,5 +862,6 @@ export default async function renderCard(router, params) {
   return () => {
     aborted = true;
     if (timerInt) clearInterval(timerInt);
+    critOverlay.remove();
   };
 }
