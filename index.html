@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="description" content="Choose or Dare — the mobile party game that picks who dares next. Free." />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Choose or Dare</title>
     <link rel="stylesheet" href="/src/styles/theme.css" />
     <link rel="stylesheet" href="/src/styles/global.css" />
@@ -16,6 +17,10 @@
     <link rel="stylesheet" href="/src/styles/components.css" />
   </head>
   <body>
+    <!-- Boot spinner: removed by main.js after first auth resolution -->
+    <div id="init-spinner" style="position:fixed;inset:0;background:#0A0A0F;display:grid;place-items:center;z-index:9999">
+      <div style="width:44px;height:44px;border-radius:50%;border:3px solid rgba(124,77,255,0.2);border-top-color:#7C4DFF;animation:spin 0.8s linear infinite"></div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

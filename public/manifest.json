@@ -1,11 +1,28 @@
 {
   "name": "Choose or Dare",
-  "short_name": "ChooseOrDare",
-  "description": "Choose or Dare — the mobile party game that picks who dares next.",
+  "short_name": "C&D",
+  "description": "The mobile party game that picks who dares next.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "theme_color": "#7C4DFF",
   "background_color": "#0A0A0F",
-  "theme_color": "#0A0A0F",
-  "icons": []
+  "lang": "en",
+  "categories": ["games", "entertainment", "social"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "share_target": null
 }

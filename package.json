@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "canvas": "^3.2.3",
     "rollup-plugin-visualizer": "^7.0.1",
+    "terser": "^5.48.0",
     "vite": "^8.0.12",
     "wrangler": "^4.95.0"
   },

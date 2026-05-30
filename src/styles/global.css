@@ -215,3 +215,8 @@ button {
 .text-hint {
   color: var(--text-hint);
 }
+
+/* ── Boot Spinner ────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
