@@ -76,11 +76,12 @@ const { preflight, corsify } = cors({
 
 // ---- Router ----------------------------------------------------------------
 const router = AutoRouter({
-  before:  [preflight, corsCheck, ipRateLimit],
+  before:  [preflight, corsCheck, ipRateLimit, contentTypeCheck],
   finally: [corsify, securityHeaders],
   catch: (err) => {
-    console.error("[worker]", err.message);
-    return json({ error: "Internal server error" }, { status: 500 });
+    // Never expose stack traces or internal messages to clients
+    console.error('[worker]', err?.message);
+    return json({ error: 'Internal server error' }, { status: 500 });
   },
 });
 

@@ -816,9 +816,25 @@ export default function renderCards(router, params) {
     haptic.medium();
     const count = parsed.cards.length;
     scanSummary.textContent = `Found ${count} card${count !== 1 ? 's' : ''} to import`;
-    scanPreview.innerHTML = parsed.cards.slice(0, 5).map(c =>
-      `<div>• <strong style="color:${c.type==='TRUTH'?'#42A5F5':'#FF6061'}">${c.type}</strong> — ${escapeHtml(c.text?.slice(0,60))}${c.text?.length > 60 ? '…' : ''}</div>`
-    ).join('');
+
+    // Build preview with DOM — no innerHTML interpolation of untrusted QR data
+    scanPreview.textContent = '';
+    const VALID_TYPES = ['TRUTH', 'DARE'];
+    parsed.cards.slice(0, 5).forEach(c => {
+      const row  = document.createElement('div');
+      const dot  = document.createTextNode('• ');
+      const type = document.createElement('strong');
+      const safeType = VALID_TYPES.includes(String(c.type ?? '').toUpperCase())
+        ? String(c.type).toUpperCase() : 'DARE';
+      type.style.color = safeType === 'TRUTH' ? '#42A5F5' : '#FF6061';
+      type.textContent  = safeType;
+      const dash = document.createTextNode(` — ${String(c.text ?? '').slice(0, 60)}${(c.text?.length ?? 0) > 60 ? '\u2026' : ''}`);
+      row.appendChild(dot);
+      row.appendChild(type);
+      row.appendChild(dash);
+      scanPreview.appendChild(row);
+    });
+
     scanResult.classList.add('visible');
     scanImportBtn.style.display = 'block';
   }
@@ -831,13 +847,18 @@ export default function renderCards(router, params) {
     for (const c of scannedData.cards) {
       const text = sanitizeCard(c.text ?? '');
       if (text.length < MIN_CHARS) continue;
+      // Validate type from QR against known values
+      const VALID_TYPES = ['TRUTH', 'DARE'];
+      const safeType = VALID_TYPES.includes(String(c.type ?? '').toUpperCase())
+        ? String(c.type).toUpperCase() : 'DARE';
+      const safeDiff = Math.min(5, Math.max(1, parseInt(c.diff ?? 3, 10)));
       try {
         const saved = await api.saveCustomCard({
-          text, type: c.type ?? 'TRUTH', category: 'CUSTOM',
-          difficulty: c.diff ?? 3, is_adult_only: c.adult ?? false,
+          text, type: safeType, category: 'CUSTOM',
+          difficulty: safeDiff, is_adult_only: c.adult ?? false,
         });
-        customCards.unshift({ id: saved?.id ?? Date.now(), text, type: c.type ?? 'TRUTH',
-          category: 'CUSTOM', difficulty: c.diff ?? 3, is_adult_only: c.adult ?? false });
+        customCards.unshift({ id: saved?.id ?? Date.now(), text, type: safeType,
+          category: 'CUSTOM', difficulty: safeDiff, is_adult_only: c.adult ?? false });
         imported++;
       } catch { /* skip invalid */ }
     }

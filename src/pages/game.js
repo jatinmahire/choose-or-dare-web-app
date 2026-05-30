@@ -6,6 +6,7 @@
 import { store }          from '../store.js';
 import { haptic, sound }  from '../utils/feedback.js';
 import { writeFingerPos } from '../firestore.js';
+import { isValidRoomId, sanitizeName } from '../utils/security.js';
 
 // ── Player palette (matches setup.js AV_COLORS) ──────────────────────────────
 const PLAYER_COLORS = [
@@ -170,7 +171,17 @@ export default function renderGame(router, params) {
   if (!session) { router.navigate('/setup', true); return; }
 
   const { roomId, players, playerColors } = session;
-  const colors = playerColors ?? players.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]);
+
+  // Validate roomId before any Firestore calls
+  if (roomId && !isValidRoomId(roomId)) {
+    console.warn('[game] invalid roomId in session, redirecting to /home');
+    router.navigate('/home', true);
+    return;
+  }
+
+  // Sanitize player names from session (defense-in-depth)
+  const safeNames = players.map(n => sanitizeName(n) || 'Player');
+  const colors = playerColors ?? safeNames.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]);
 
   app.innerHTML = '';
 
@@ -178,14 +189,21 @@ export default function renderGame(router, params) {
   const root = document.createElement('div');
   root.className = 'gp-root';
 
-  // Player chips row
+  // Player chips row — use textContent to prevent name injection
   const chipsEl = document.createElement('div');
   chipsEl.className = 'gp-chips';
-  chipsEl.innerHTML = players.map((name, i) => `
-    <div class="gp-chip">
-      <div class="gp-chip-dot" style="background:${colors[i]}"></div>
-      ${name.split(' ')[0]}
-    </div>`).join('');
+  safeNames.forEach((name, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'gp-chip';
+    const dot = document.createElement('div');
+    dot.className = 'gp-chip-dot';
+    dot.style.background = colors[i];
+    const label = document.createElement('span');
+    label.textContent = name.split(' ')[0];
+    chip.appendChild(dot);
+    chip.appendChild(label);
+    chipsEl.appendChild(chip);
+  });
   root.appendChild(chipsEl);
 
   // Back button
@@ -421,14 +439,14 @@ export default function renderGame(router, params) {
     for (const touch of e.changedTouches) {
       const { identifier: id, clientX: x, clientY: y } = touch;
       if (touches.has(id)) continue;
-      if (nextPlayerIndex >= players.length) continue; // cap at player count
+      if (nextPlayerIndex >= safeNames.length) continue; // cap at player count
 
       const idx = nextPlayerIndex++;
       touches.set(id, {
         x, y,
         playerIndex: idx,
         color: colors[idx] ?? PLAYER_COLORS[idx % PLAYER_COLORS.length],
-        name:  players[idx] ?? `P${idx + 1}`,
+        name:  safeNames[idx] ?? `P${idx + 1}`,
       });
 
       // Firestore write (throttled in firestore.js)

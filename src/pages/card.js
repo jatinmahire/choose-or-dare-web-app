@@ -5,6 +5,7 @@ import { store }       from '../store.js';
 import { api }         from '../utils/api.js';
 import { haptic, sound, showToast } from '../utils/feedback.js';
 import { deleteRoom }  from '../firestore.js';
+import { sanitizeName } from '../utils/security.js';
 
 // ── Category metadata ────────────────────────────────────────────────────────
 const CAT_META = {
@@ -292,8 +293,8 @@ export default async function renderCard(router, params) {
 
   const { roomId, players, playerColors, categories, sessionId, timerSeconds = 30, isAdult = false } = session;
   const roundNum      = (store.roundResults?.length ?? 0) + 1;
-  const activePlayer  = store.currentPlayerName ?? players[0];
-  const activeIdx     = players.indexOf(activePlayer);
+  const activePlayer  = sanitizeName(store.currentPlayerName ?? players[0]);
+  const activeIdx     = players.indexOf(store.currentPlayerName ?? players[0]);
   const activeColor   = playerColors?.[activeIdx] ?? getPlayerColor(activeIdx);
   const cardType      = store.currentCardType ?? 'TRUTH'; // TRUTH | DARE
 
@@ -307,10 +308,9 @@ export default async function renderCard(router, params) {
     <!-- Top bar -->
     <header class="cr-topbar">
       <div class="cr-player-chip">
-        <div class="cr-avatar" style="background:${activeColor}">
-          ${activePlayer?.[0]?.toUpperCase() ?? '?'}
+        <div class="cr-avatar" id="cr-avatar" style="background:${activeColor}">
         </div>
-        <span class="cr-player-name">${activePlayer}</span>
+        <span class="cr-player-name" id="cr-player-name-el"></span>
       </div>
       <span class="cr-round-badge">Round ${roundNum}</span>
       <button class="cr-skip-btn" id="cr-skip">SKIP</button>
@@ -352,6 +352,12 @@ export default async function renderCard(router, params) {
   `;
 
   app.appendChild(root);
+
+  // Set player avatar initial + name via textContent (not innerHTML)
+  const avatarEl = root.querySelector('#cr-avatar');
+  const nameEl   = root.querySelector('#cr-player-name-el');
+  if (avatarEl) avatarEl.textContent = (activePlayer?.[0] ?? '?').toUpperCase();
+  if (nameEl)   nameEl.textContent   = activePlayer;
 
   // ── State ─────────────────────────────────────────────────────────────────
   let card       = null;
@@ -399,6 +405,11 @@ export default async function renderCard(router, params) {
     const wrap  = document.createElement('div');
     wrap.className = 'cr-card-wrap animate-scale-in';
 
+    // Card category label — textContent (not interpolated into innerHTML)
+    const catLabelEl = document.createElement('div');
+    catLabelEl.style.cssText = `opacity:.3;font-family:'Space Grotesk',system-ui,sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:${meta.color}`;
+    catLabelEl.textContent = card.category;
+
     wrap.innerHTML = `
       <div class="card-scene">
         <div class="card-inner" id="cr-card-inner">
@@ -406,10 +417,7 @@ export default async function renderCard(router, params) {
           <div class="card-face card-front">
             <div class="cr-front-inner"
                  style="background:${meta.gradient};border-color:${meta.border}">
-              <div style="opacity:.3;font-family:'Space Grotesk',system-ui,sans-serif;
-                font-size:11px;font-weight:700;letter-spacing:.12em;color:${meta.color}">
-                ${card.category}
-              </div>
+              <div id="cr-cat-label-slot"></div>
               <div class="cr-front-emoji">${meta.emoji}</div>
               <div class="cr-front-hint">Tap to reveal</div>
               <div class="cr-diff-dots" style="color:${meta.color}">
@@ -423,7 +431,7 @@ export default async function renderCard(router, params) {
               <span class="cr-type-badge ${isTruth ? 'cr-type-truth' : 'cr-type-dare'}">
                 ${isTruth ? '💬 TRUTH' : '🔥 DARE'}
               </span>
-              <p class="cr-card-text">${card.text}</p>
+              <p class="cr-card-text" id="cr-card-text-el"></p>
               <div class="cr-diff-stars">
                 ${difficultyDots(card.difficulty, meta.color, 'star')}
               </div>
@@ -432,6 +440,12 @@ export default async function renderCard(router, params) {
         </div>
       </div>
     `;
+
+    // Inject category label and card text safely via textContent
+    const catSlot = wrap.querySelector('#cr-cat-label-slot');
+    if (catSlot) catSlot.appendChild(catLabelEl);
+    const cardTextEl = wrap.querySelector('#cr-card-text-el');
+    if (cardTextEl) cardTextEl.textContent = card.text ?? '';
 
     area.appendChild(wrap);
 

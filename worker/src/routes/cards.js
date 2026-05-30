@@ -1,4 +1,4 @@
-﻿// worker/src/routes/cards.js
+// worker/src/routes/cards.js
 // GET  /api/cards/random        - random card, excludes used session cards
 // GET  /api/custom-cards        - user's custom cards
 // POST /api/custom-cards        - create custom card (sanitized)
@@ -44,10 +44,18 @@ async function saveCustomCard(request, env) {
   if (errResp) return errResp;
   let body;
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, { status: 400 }); }
-  const text = String(body.text ?? "").replace(/<[^>]*>/g,"").replace(/[<>"'&]/g,"").trim().slice(0,150);
-  if (text.length < 5) return json({ error: "Card text must be at least 5 characters" }, { status: 400 });
-  const cardType = ["dare","choose"].includes(body.type) ? body.type : "dare";
-  const category = String(body.category ?? "CUSTOM").slice(0,30);
+  const text = String(body.text ?? '').replace(/<[^>]*>/g,'').replace(/[<>"'&]/g,'').trim().slice(0, 150);
+  if (text.length < 10) return json({ error: 'Card text must be at least 10 characters' }, { status: 400 });
+  // Validate type against known values (client sends TRUTH or DARE)
+  const VALID_TYPES = ['TRUTH', 'DARE'];
+  const cardType = VALID_TYPES.includes(String(body.type ?? '').toUpperCase())
+    ? String(body.type).toUpperCase()
+    : 'DARE';
+  // Validate category against known values (not arbitrary user string)
+  const VALID_CATS = ['FRIENDLY', 'PARTY', 'COUPLES', 'DIRTY', 'CUSTOM'];
+  const category = VALID_CATS.includes(String(body.category ?? '').toUpperCase())
+    ? String(body.category).toUpperCase()
+    : 'CUSTOM';
   const difficulty = Math.min(5, Math.max(1, parseInt(body.difficulty ?? 3, 10)));
   const isAdult = body.is_adult_only ? 1 : 0;
   const { meta } = await run(env,

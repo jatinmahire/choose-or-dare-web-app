@@ -5,6 +5,7 @@ import { store }        from '../store.js';
 import { createRoom }   from '../firestore.js';
 import { showToast }    from '../utils/feedback.js';
 import { AV_COLORS }    from './home.js';
+import { sanitizeName } from '../utils/security.js';
 
 // ── Avatar colour palette ────────────────────────────────────────────────────
 // AV_COLORS imported from home.js (8 colours)
@@ -470,9 +471,20 @@ export default function renderSetup(router) {
     startBtn.disabled = true;
 
     try {
-      const cats    = [...selectedCats];
-      const pNames  = players.map(p => p.name.trim());
-      const roomId  = await createRoom(store.user.uid, pNames, cats);
+      // Validate categories against known list (prevent injection)
+      const VALID_CATS = new Set(['FRIENDLY','PARTY','COUPLES','DIRTY','CUSTOM']);
+      const cats = [...selectedCats].filter(c => VALID_CATS.has(c));
+      if (!cats.length) throw new Error('Pick at least one valid category');
+
+      // Sanitize player names (strip HTML, enforce max 50 chars)
+      const pNames = players.map(p => sanitizeName(p.name.trim()) || 'Player');
+
+      // Final uniqueness check after sanitization
+      if (new Set(pNames).size !== pNames.length) {
+        throw new Error('Player names must be unique after sanitization');
+      }
+
+      const roomId = await createRoom(store.user.uid, pNames, cats);
 
       store.gameSession = {
         roomId,
