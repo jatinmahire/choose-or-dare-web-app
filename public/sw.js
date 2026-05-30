@@ -2,7 +2,7 @@
 // Strategy: cache-first for static assets, network-first for /api/ calls.
 // Caches successful /api/cards/random responses for offline play.
 
-const CACHE_NAME = 'cod-v1';
+const CACHE_NAME = 'cod-v2';
 
 // Static assets pre-cached on install
 const STATIC_ASSETS = [

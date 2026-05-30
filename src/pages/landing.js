@@ -263,36 +263,22 @@ export default function renderLanding(router) {
   const btn = root.querySelector('#landing-google-btn');
 
   async function handleSignIn() {
+    // Disable button and show redirect message immediately.
+    // signInWithRedirect() navigates away — the page never comes back here.
     btn.disabled = true;
     btn.classList.add('loading');
+    const textEl = btn.querySelector('.google-btn-text');
+    if (textEl) textEl.textContent = 'Redirecting to Google…';
+
     try {
-      const user = await signInWithGoogle();
-      // On mobile: signInWithGoogle() triggers a redirect — page navigates away.
-      // The code below only runs on desktop (popup flow).
-      if (user) {
-        store.user = user;
-        router.navigate('/home', true);
-      } else {
-        // Mobile redirect initiated — update button text to inform user
-        btn.querySelector('.google-btn-text').textContent = 'Redirecting to Google…';
-        // Keep button disabled; page will reload after redirect
-      }
+      await signInWithGoogle(); // triggers full-page redirect — never resolves
     } catch (err) {
-      // auth/popup-closed-by-user: user dismissed the popup — not an error
-      if (err?.code === 'auth/popup-closed-by-user' ||
-          err?.code === 'auth/cancelled-popup-request') {
-        // Silently reset — user can try again
-      } else {
-        console.error('[landing] sign-in error:', err);
-        showToast(
-          err?.code === 'auth/popup-blocked'
-            ? 'Popup blocked — tap the button again to try redirect sign-in'
-            : (err.message ?? 'Sign-in failed. Please try again.'),
-          'error'
-        );
-      }
+      // Only reachable if redirect itself fails (rare network error)
+      console.error('[landing] redirect error:', err);
+      showToast('Sign-in failed. Check your connection and try again.', 'error');
       btn.disabled = false;
       btn.classList.remove('loading');
+      if (textEl) textEl.textContent = 'Sign in with Google';
     }
   }
 

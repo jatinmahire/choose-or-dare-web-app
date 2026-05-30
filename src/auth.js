@@ -3,13 +3,12 @@
 // The 55-minute auto-refresh window matches Firebase's 1-hour token lifetime
 // with a 5-minute safety margin.
 //
-// Strategy:
-//   Mobile browsers block popups → use signInWithRedirect.
-//   Desktop browsers support popups → use signInWithPopup for better UX.
+// Strategy: ALWAYS use signInWithRedirect (no popup).
+// Works identically on Brave, Chrome, Safari, Firefox on every device.
+// No popup-blocking issues, no auth/popup-closed-by-user errors ever.
 
 import {
   GoogleAuthProvider,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut,
@@ -26,36 +25,16 @@ const provider = new GoogleAuthProvider();
 // Force the account-picker screen every time so users can switch accounts.
 provider.setCustomParameters({ prompt: 'select_account' });
 
-// ── Mobile detection ──────────────────────────────────────────────────────
-// Mobile browsers (iOS Safari, Chrome Android, Brave mobile, etc.) block
-// popups reliably. Use redirect flow on mobile for seamless UX.
-function isMobileBrowser() {
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-    || ('ontouchstart' in window && window.innerWidth < 768);
-}
-
 // ── Sign In ────────────────────────────────────────────────────────────────
 
 /**
- * Signs in with Google.
- * - Mobile: redirects to Google, returns on completion (resolves NEVER — page navigates away).
- * - Desktop: opens popup, resolves with User on success.
- *
- * After mobile redirect, call resumeRedirectSignIn() on page load.
- *
- * @returns {Promise<import('firebase/auth').User | void>}
+ * Initiates Google Sign-In via full-page redirect.
+ * The browser navigates to Google — this promise never resolves.
+ * On return, resumeRedirectSignIn() handles the result.
  */
 export async function signInWithGoogle() {
-  if (isMobileBrowser()) {
-    // Redirect flow — page will reload after Google auth.
-    // signInWithRedirect does not return a user; resumeRedirectSignIn() does.
-    await signInWithRedirect(auth, provider);
-    return; // unreachable — browser navigates away
-  }
-
-  // Desktop popup flow
-  const result = await signInWithPopup(auth, provider);
-  return _storeUser(result.user);
+  await signInWithRedirect(auth, provider);
+  // Browser navigates away — nothing below this runs.
 }
 
 /**
