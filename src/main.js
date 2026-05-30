@@ -100,15 +100,15 @@ if (!isMobile()) {
     if (!routerStarted) {
       startRouter(appEl);
     } else {
-      // Subsequent auth changes (sign-in after redirect, or logout)
+      // Subsequent auth changes
       const path = window.location.hash.slice(1) || '/';
       if (user && ['/', '/landing'].includes(path)) {
-        // User just signed in via Google redirect — send to home
+        // Signed-in user landed on landing → send to home
         router.navigate('/home', true);
-      } else if (!user && !['/', '/landing'].includes(path)) {
-        // User signed out from a protected page — send to landing
-        router.navigate('/landing', true);
       }
+      // NOTE: We do NOT redirect guests to /landing here.
+      // Guests can navigate freely — no account required to play.
+      // Individual pages handle their own guest/auth state.
     }
   });
 
