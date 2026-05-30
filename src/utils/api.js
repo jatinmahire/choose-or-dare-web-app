@@ -142,6 +142,14 @@ export const api = {
   // ── Account ───────────────────────────────────────────────────────────────
 
   /**
+   * Clear all game history for the current user and reset their stats.
+   * The account itself is preserved (use deleteAccount to remove everything).
+   */
+  clearHistory() {
+    return workerFetch('/api/history', { method: 'DELETE' });
+  },
+
+  /**
    * Permanently delete the current user's account and all associated data.
    * Deletes in FK order: history → custom_cards → sessions → users.
    */

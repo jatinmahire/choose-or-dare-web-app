@@ -10,23 +10,60 @@ import { requireAuth } from "../auth.js";
 async function getRandomCard(request, env) {
   const [user, errResp] = await requireAuth(request, env);
   if (errResp) return errResp;
+
   const url = new URL(request.url);
-  const categories = (url.searchParams.get("categories") ?? "friendly").split(",").filter(Boolean);
-  const isAdult = url.searchParams.get("adult") === "1" ? [0,1] : [0];
-  const sessionId = url.searchParams.get("sessionId") ?? "";
-  const catPH = categories.map(() => "?").join(",");
+
+  // Uppercase categories to match DB values (FRIENDLY, PARTY, COUPLES, DIRTY)
+  const categories = (url.searchParams.get("categories") ?? "FRIENDLY")
+    .split(",")
+    .map(c => c.trim().toUpperCase())
+    .filter(Boolean);
+
+  // adult=1 → include adult cards; otherwise only non-adult
+  const isAdult = url.searchParams.get("adult") === "1" ? [0, 1] : [0];
+
+  // usedIds: comma-separated integer card IDs already seen this session
+  // The history table stores card_text (not card_id), so anti-repeat is
+  // handled client-side by passing already-used IDs as query params.
+  const usedIds = (url.searchParams.get("usedIds") ?? "")
+    .split(",")
+    .map(s => parseInt(s.trim(), 10))
+    .filter(n => Number.isInteger(n) && n > 0);
+
+  const catPH   = categories.map(() => "?").join(",");
   const adultPH = isAdult.map(() => "?").join(",");
+
   let sql, params;
-  if (sessionId) {
-    sql = "SELECT id, text, type, category, difficulty, is_adult_only FROM cards WHERE category IN ("+catPH+") AND is_adult_only IN ("+adultPH+") AND id NOT IN (SELECT id FROM history WHERE session_id=?) ORDER BY RANDOM() LIMIT 1";
-    params = [...categories, ...isAdult, sessionId];
+
+  if (usedIds.length > 0) {
+    const usedPH = usedIds.map(() => "?").join(",");
+    sql = `SELECT id, text, type, category, difficulty, is_adult_only
+           FROM cards
+           WHERE category IN (${catPH})
+             AND is_adult_only IN (${adultPH})
+             AND id NOT IN (${usedPH})
+           ORDER BY RANDOM()
+           LIMIT 1`;
+    params = [...categories, ...isAdult, ...usedIds];
   } else {
-    sql = "SELECT id, text, type, category, difficulty, is_adult_only FROM cards WHERE category IN ("+catPH+") AND is_adult_only IN ("+adultPH+") ORDER BY RANDOM() LIMIT 1";
+    sql = `SELECT id, text, type, category, difficulty, is_adult_only
+           FROM cards
+           WHERE category IN (${catPH})
+             AND is_adult_only IN (${adultPH})
+           ORDER BY RANDOM()
+           LIMIT 1`;
     params = [...categories, ...isAdult];
   }
+
   const card = await first(env, sql, params);
   if (!card) return json({ error: "No cards available" }, { status: 404 });
-  await run(env, "UPDATE cards SET times_used = times_used + 1 WHERE id = ?", [card.id]);
+
+  // Increment usage counter (fire-and-forget, don't block response)
+  env.DB.prepare("UPDATE cards SET times_used = times_used + 1 WHERE id = ?")
+    .bind(card.id)
+    .run()
+    .catch(() => {}); // non-critical, swallow errors
+
   return json({ card });
 }
 

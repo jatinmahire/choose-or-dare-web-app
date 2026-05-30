@@ -153,6 +153,17 @@ router.get("/api/cards/random",    cardsHandler);
 router.get("/api/custom-cards",    cardsHandler);
 router.post("/api/custom-cards",   cardsHandler);
 router.delete("/api/custom-cards/:id", cardsHandler);
+// Clear history: 5/hour (destructive write, conservative limit)
+router.delete("/api/history", async (req, env, ctx) => {
+  const [user, errResp] = await requireAuth(req, env);
+  if (errResp) return errResp;
+  if (!checkRateLimit("clear:" + user.uid, 5, 3_600_000)) {
+    return json({ error: "Rate limit: max 5 history clears per hour" }, { status: 429 });
+  }
+  req._user = user;
+  return accountHandler(req, env, ctx);
+});
+
 router.delete("/api/account",      accountHandler);
 
 // ---- 404 -------------------------------------------------------------------

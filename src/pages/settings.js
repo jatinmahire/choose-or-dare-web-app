@@ -461,12 +461,14 @@ export default function renderSettings(router, params) {
         await logout();
         router.navigate('/', true);
       } else if (pendingAction === 'clear') {
-        // clear history via saveSession with empty data isn't supported —
-        // for now wipe local state and show success (server-side clear endpoint TBD)
-        store.roundResults  = [];
-        store.gameSession   = null;
-        showToast('History cleared locally', 'success');
+        await api.clearHistory();
+        // Reset local in-memory state too
+        store.roundResults = [];
+        store.gameSession  = null;
         overlay.classList.remove('visible');
+        showToast('History cleared', 'success');
+        // Bounce to stats so the user sees the empty state
+        router.navigate('/stats', true);
       }
     } catch (err) {
       console.error('[settings] action error:', err);
