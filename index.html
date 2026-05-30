@@ -7,16 +7,38 @@
     <meta name="theme-color" content="#0A0A0F" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="description" content="Choose or Dare — the mobile party game that picks who dares next. Free." />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Choose or Dare — the mobile party game that picks who dares next. Free, no install." />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:title"       content="Choose or Dare" />
+    <meta property="og:description" content="The mobile party game that picks who dares next. Tap, dare, repeat." />
+    <meta property="og:image"       content="/icon-512.png" />
+    <meta property="og:url"         content="https://choose-or-dare.pages.dev" />
+    <meta name="twitter:card"        content="summary" />
+    <meta name="twitter:title"       content="Choose or Dare" />
+    <meta name="twitter:description" content="The mobile party game that picks who dares next. Free." />
+    <meta name="twitter:image"       content="/icon-512.png" />
+
     <title>Choose or Dare</title>
 
-    <!-- Performance: preconnect to Firebase/Google origins -->
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://apis.google.com" crossorigin />
+    <!-- Performance: preconnect to external origins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com"    crossorigin />
+    <link rel="preconnect" href="https://www.gstatic.com"      crossorigin />
+    <link rel="preconnect" href="https://apis.google.com"      crossorigin />
     <link rel="dns-prefetch" href="https://firebaseio.com" />
     <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+
+    <!--
+      Google Fonts — loaded once here so all pages share the same cached resource.
+      display=swap prevents FOIT; preconnect hints above eliminate DNS RTT.
+    -->
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800;12..96,900&family=Space+Grotesk:wght@700&family=Hanken+Grotesk:wght@400;600;700&display=swap" />
 
     <link rel="stylesheet" href="/src/styles/theme.css" />
     <link rel="stylesheet" href="/src/styles/global.css" />

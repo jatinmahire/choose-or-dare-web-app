@@ -185,13 +185,6 @@ const CSS = `
 }
 `;
 
-function loadFonts() {
-  if (document.getElementById('cod-fonts')) return;
-  const l = document.createElement('link');
-  l.id  = 'cod-fonts'; l.rel = 'stylesheet';
-  l.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Space+Grotesk:wght@700&family=Hanken+Grotesk:wght@400;600;700&display=swap';
-  document.head.appendChild(l);
-}
 
 function injectStyles() {
   if (document.getElementById('desktop-styles')) return;
@@ -242,7 +235,6 @@ const BOTTLE_SVG = `
 
 // ── Main render ───────────────────────────────────────────────────────────────
 export default function renderDesktop(router) {
-  loadFonts();
   injectStyles();
 
   const app = document.getElementById('app');

@@ -6,16 +6,6 @@ import { signInWithGoogle } from '../auth.js';
 import { store }            from '../store.js';
 import { showToast }        from '../utils/feedback.js';
 
-// ── Google Fonts (loaded once) ───────────────────────────────────────────────
-function loadFonts() {
-  if (document.getElementById('cod-fonts')) return;
-  const link = document.createElement('link');
-  link.id   = 'cod-fonts';
-  link.rel  = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800;12..96,900&family=Space+Grotesk:wght@700&family=Hanken+Grotesk:wght@400;600;700&display=swap';
-  document.head.appendChild(link);
-}
-
 // ── Styles (injected once) ───────────────────────────────────────────────────
 const CSS = `
 /* Entrance animations */
