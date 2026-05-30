@@ -267,8 +267,8 @@ function injectStyles() {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 export default function renderLanding(router) {
-  loadFonts();
   injectStyles();
+
 
   const app = document.getElementById('app');
   if (!app) return;
