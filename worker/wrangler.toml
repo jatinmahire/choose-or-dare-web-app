@@ -1,1 +1,17 @@
-# TODO
+# wrangler.toml — Cloudflare Worker configuration for Choose or Dare API
+# Account ID: 87b8dab39424402ebe0ecdf732df92a5
+# D1 Database ID: d8302cd1-2fa6-4330-a2f7-2fac4a892ddb
+
+name               = "choose-or-dare-api"
+main               = "src/index.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding       = "DB"
+database_name = "choose-or-dare"
+database_id   = "d8302cd1-2fa6-4330-a2f7-2fac4a892ddb"
+
+[vars]
+ALLOWED_ORIGIN       = "https://choose-or-dare.pages.dev"
+FIREBASE_PROJECT_ID  = "chooseordare-23587"
