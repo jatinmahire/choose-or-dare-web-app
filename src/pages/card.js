@@ -383,7 +383,7 @@ export default async function renderCard(router, params) {
 
   const app = document.getElementById('app');
   if (!app) return;
-  if (!store.user) { router.navigate('/landing', true); return; }
+  // Guests can draw cards freely — no auth guard here.
 
   const session = store.gameSession;
   if (!session) { router.navigate('/setup', true); return; }

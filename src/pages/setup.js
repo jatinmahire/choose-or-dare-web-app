@@ -236,7 +236,8 @@ export default function renderSetup(router) {
 
   const app = document.getElementById('app');
   if (!app) return;
-  if (!store.user) { router.navigate('/landing', true); return; }
+  // Guests (no account) can play freely — no auth guard here.
+  // Only authenticated features (history, stats, leaderboard) require sign-in.
 
   // Reset game state for fresh setup
   store.resetGame?.();

@@ -302,7 +302,7 @@ export default function renderResult(router, params) {
 
   const app = document.getElementById('app');
   if (!app) return;
-  if (!store.user) { router.navigate('/landing', true); return; }
+  // Guests can see results freely — no auth guard here.
 
   const session      = store.gameSession;
   const roundResults = store.roundResults ?? [];

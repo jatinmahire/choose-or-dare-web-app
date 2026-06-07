@@ -199,8 +199,7 @@ export default function renderGame(router, params) {
   const app = document.getElementById('app');
   if (!app) return;
 
-  // Auth guard
-  if (!store.user) { router.navigate('/landing', true); return; }
+  // Guests can play freely — no auth guard here.
 
   // Pull session data
   const session = store.gameSession;
