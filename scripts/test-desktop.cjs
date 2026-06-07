@@ -1,4 +1,4 @@
-// scripts/test-desktop.cjs — Puppeteer headless test against LIVE Cloudflare site
+// scripts/test-desktop.cjs — Simplified Puppeteer test (no dynamic waits)
 
 const puppeteer = require('puppeteer');
 const path = require('path');
@@ -9,46 +9,15 @@ const SCREENSHOT_DIR = path.join(__dirname, '..', 'test-screenshots');
 
 if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
-async function screenshot(page, name) {
-  const file = path.join(SCREENSHOT_DIR, `${name}.png`);
-  await page.screenshot({ path: file, fullPage: false });
-  console.log(`  📸 test-screenshots/${name}.png`);
-  return file;
-}
-
-async function waitForApp(page, timeout = 12000) {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    const ready = await page.evaluate(() => {
-      const spinner = document.getElementById('init-spinner');
-      const app = document.querySelector('#app');
-      // App is ready when spinner is gone AND #app has content
-      return (!spinner || spinner.style.opacity === '0' || !spinner.isConnected)
-        && app && app.children.length > 0;
-    }).catch(() => false);
-    if (ready) return true;
-    await new Promise(r => setTimeout(r, 500));
-  }
-  console.log('  ⚠️  App took >12s — capturing screenshot anyway');
-  return false;
-}
-
-async function getInfo(page) {
-  return page.evaluate(() => ({
-    hash: window.location.hash,
-    content: document.querySelector('#app')?.innerText?.replace(/\s+/g, ' ').trim().slice(0, 200) || '(empty)',
-    spinnerGone: !document.getElementById('init-spinner'),
-    appMaxWidth: getComputedStyle(document.querySelector('#app') || document.body).maxWidth,
-    appRadius: getComputedStyle(document.querySelector('#app') || document.body).borderRadius,
-    bodyDisplay: getComputedStyle(document.body).display,
-  }));
-}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function runTests() {
-  console.log(`🚀 Launching headless Chrome → ${BASE_URL}\n`);
+  console.log(`🚀 Headless Chrome → ${BASE_URL}\n`);
 
   const browser = await puppeteer.launch({
     headless: 'new',
+    // Use the system Chrome instead of bundled Chromium (avoids V8 snapshot errors on Windows)
+    executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -57,55 +26,86 @@ async function runTests() {
     ],
   });
 
-  const viewports = [
+  const tests = [
     { name: '01-desktop-1280x800', w: 1280, h: 800,  label: 'Desktop  1280×800' },
-    { name: '02-laptop-1024x768',  w: 1024, h: 768,  label: 'Laptop   1024×768' },
-    { name: '03-tablet-768x1024',  w: 768,  h: 1024, label: 'Tablet    768×1024' },
-    { name: '04-mobile-390x844',   w: 390,  h: 844,  label: 'Mobile    390×844'  },
+    { name: '02-laptop-1024x768',  w: 1024, h: 768,  label: 'Laptop   1024×768'  },
+    { name: '03-tablet-768x1024',  w: 768,  h: 1024, label: 'Tablet    768×1024'  },
+    { name: '04-mobile-390x844',   w: 390,  h: 844,  label: 'Mobile    390×844'   },
   ];
 
-  const results = [];
-
-  for (const vp of viewports) {
-    console.log(`\n══ ${vp.label} ══`);
+  for (const t of tests) {
+    console.log(`\n── ${t.label} ──`);
     const page = await browser.newPage();
-    await page.setViewport({ width: vp.w, height: vp.h });
+
+    // Disable images/fonts to speed up load
+    await page.setRequestInterception(true);
+    page.on('request', req => {
+      if (['image', 'font'].includes(req.resourceType())) req.abort();
+      else req.continue();
+    });
+
+    await page.setViewport({ width: t.w, height: t.h });
 
     try {
-      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
-      const ready = await waitForApp(page, 12000);
-      const info = await getInfo(page);
+      console.log(`  Navigating...`);
+      // Use load event with timeout
+      const resp = await page.goto(BASE_URL, {
+        waitUntil: 'load',
+        timeout: 25000,
+      }).catch(e => ({ failed: e.message }));
 
-      const pass = ready && (info.hash === '#/setup' || info.hash === '#/home');
-      console.log(`  Routed to:   "${info.hash}" ${pass ? '✅' : '⚠️  expected #/setup'}`);
-      console.log(`  Spinner:     ${info.spinnerGone ? '✅ gone' : '❌ still showing'}`);
-      console.log(`  #app max-w:  ${info.appMaxWidth}  (should be 430px on desktop)`);
-      console.log(`  #app radius: ${info.appRadius}  (should be 24px on desktop)`);
-      console.log(`  Content:     "${info.content.slice(0, 120)}"`);
+      if (resp && resp.failed) {
+        console.log(`  ❌ Nav failed: ${resp.failed}`);
+      } else {
+        console.log(`  ✅ Page loaded`);
+      }
 
-      await screenshot(page, vp.name);
-      results.push({ label: vp.label, pass, ...info });
+      // Fixed wait — let Firebase auth + router settle
+      console.log(`  Waiting 6s for auth + router...`);
+      await sleep(6000);
+
+      // Capture state
+      const info = await page.evaluate(() => {
+        const app = document.querySelector('#app');
+        const spinner = document.getElementById('init-spinner');
+        return {
+          hash: window.location.hash,
+          spinnerVisible: spinner ? (spinner.style.opacity !== '0' && spinner.isConnected) : false,
+          appChildCount: app ? app.children.length : 0,
+          content: app ? app.innerText.replace(/\s+/g, ' ').trim().slice(0, 150) : '(no #app)',
+          appMaxWidth: app ? getComputedStyle(app).maxWidth : 'n/a',
+          appRadius: app ? getComputedStyle(app).borderRadius : 'n/a',
+          bodyFlex: getComputedStyle(document.body).display,
+        };
+      }).catch(e => ({ error: e.message }));
+
+      if (info.error) {
+        console.log(`  ❌ Eval error: ${info.error}`);
+      } else {
+        const routed = info.hash === '#/setup' || info.hash === '#/home';
+        console.log(`  Hash:        ${info.hash || '(none)'}  ${routed ? '✅' : '⚠️'}`);
+        console.log(`  Spinner:     ${info.spinnerVisible ? '❌ still showing' : '✅ gone'}`);
+        console.log(`  #app kids:   ${info.appChildCount}`);
+        console.log(`  Content:     "${info.content}"`);
+        console.log(`  max-width:   ${info.appMaxWidth}  (430px expected on desktop)`);
+        console.log(`  radius:      ${info.appRadius}  (24px expected on desktop)`);
+        console.log(`  body.display:${info.bodyFlex}  (flex expected on desktop)`);
+      }
+
+      // Screenshot
+      const file = path.join(SCREENSHOT_DIR, `${t.name}.png`);
+      await page.screenshot({ path: file, fullPage: false });
+      console.log(`  📸 ${t.name}.png`);
+
     } catch (err) {
-      console.log(`  ❌ ${err.message}`);
-      await screenshot(page, vp.name).catch(() => {});
-      results.push({ label: vp.label, pass: false, error: err.message });
+      console.log(`  ❌ ERROR: ${err.message}`);
     }
+
     await page.close();
   }
 
   await browser.close();
-
-  // ── Summary ────────────────────────────────────────────────────────────────
-  console.log('\n═══════════════════════════════════════════════');
-  console.log('TEST SUMMARY');
-  console.log('═══════════════════════════════════════════════');
-  results.forEach(r => {
-    console.log(`${r.pass ? '✅ PASS' : '❌ FAIL'}  ${r.label}`);
-    if (r.error) console.log(`        Error: ${r.error}`);
-  });
-  const passed = results.filter(r => r.pass).length;
-  console.log(`\n${passed}/${results.length} tests passed`);
-  console.log('📁 Screenshots: test-screenshots/\n');
+  console.log('\n✅ Done! Check test-screenshots/ folder.\n');
 }
 
 runTests().catch(err => {

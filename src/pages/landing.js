@@ -316,7 +316,7 @@ export default function renderLanding(router) {
         <button class="play-now-btn" id="landing-play-btn" aria-label="Play Now">
           Play Now →
         </button>
-        <p class="signin-hint">NO ACCOUNT NEEDED &middot; FREE &middot; MOBILE ONLY</p>
+        <p class="signin-hint">NO ACCOUNT NEEDED &middot; FREE &middot; ALL DEVICES</p>
         <button class="land-signin-link" id="landing-google-btn" aria-label="Sign in with Google to save progress">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -346,7 +346,7 @@ export default function renderLanding(router) {
       </div>
 
       <!-- Footer -->
-      <footer class="land-footer">18+ ONLY &middot; WORKS IN YOUR MOBILE BROWSER &middot; ALWAYS FREE</footer>
+      <footer class="land-footer">18+ ONLY &middot; WORKS ON ANY DEVICE &middot; ALWAYS FREE</footer>
 
     </main>
   `;
